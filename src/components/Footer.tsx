@@ -30,9 +30,9 @@ export default function Footer() {
                       <span className="material-symbols-outlined text-sm">call</span>
                       346 677 0909
                     </a>
-                    <a href="mailto:yogacinziayoga@gmail.com" className="hover:text-primary transition-colors flex items-center gap-2 mt-1">
+                    <a href="mailto:arcadialabyoga@gmail.com" className="hover:text-primary transition-colors flex items-center gap-2 mt-1">
                       <span className="material-symbols-outlined text-sm">mail</span>
-                      yogacinziayoga@gmail.com
+                      arcadialabyoga@gmail.com
                     </a>
                   </div>
                   <div className="flex gap-4 pt-2">

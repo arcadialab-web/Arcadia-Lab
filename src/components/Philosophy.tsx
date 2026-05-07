@@ -23,7 +23,7 @@ export default function Philosophy() {
             { 
               icon: "auto_awesome", 
               title: "Autenticità", 
-              desc: "Onorare il proprio corpo in ogni gesto, lasciando che il limite diventi guida" 
+              desc: "Onorare il corpo in ogni gesto, lasciando che la percezione interna orienti il movimento" 
             },
             { 
               icon: "self_improvement", 

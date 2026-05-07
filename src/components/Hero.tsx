@@ -76,7 +76,7 @@ export default function Hero() {
             transition={{ delay: 1, duration: 1 }}
             className="text-xl md:text-2xl text-on-surface-variant max-w-lg font-light leading-relaxed"
           >
-            Accademia di Yoga — Percorsi che trasformano il corpo, regolano il respiro e riportano chiarezza dentro e fuori dal tappetino
+            Accademia di Yoga — Pratiche che integrano biomeccanica, adattabilità e forza interiore per trasformare corpo ed emozioni e ritrovare chiarezza.
           </motion.p>
 
           <motion.div 
@@ -135,15 +135,20 @@ export default function Hero() {
           >
             <p className="text-[9px] md:text-[10px] font-label tracking-[0.4em] uppercase text-on-surface-variant/70 font-semibold leading-relaxed">
               Elasticità, Forza <br />
-              e Equilibrio
+              ed Equilibrio
             </p>
           </motion.div>
 
-          {/* Decorative Floating Element */}
+          {/* Decorative Floating Element - Moved to foreground with text */}
           <motion.div 
             style={{ y: y2, x: useTransform(springX, (v) => -v * 0.8) }}
-            className="absolute -top-12 -right-12 w-32 h-32 bg-primary/10 backdrop-blur-xl rounded-full border border-white/20 -z-10 animate-float"
-          />
+            className="absolute -top-12 -right-12 w-32 h-32 md:w-36 md:h-36 bg-primary/20 backdrop-blur-xl rounded-full border border-white/40 z-30 animate-float flex items-center justify-center text-center p-4 shadow-xl shadow-primary/10"
+          >
+            <p className="font-serif italic text-primary text-xs md:text-sm font-medium leading-tight">
+              Yoga è <br />
+              stupore!
+            </p>
+          </motion.div>
         </motion.div>
       </div>
 

@@ -23,8 +23,7 @@ export default function Studio() {
           >
             <h2 className="text-4xl md:text-5xl font-serif">Un luogo, non solo uno spazio.</h2>
             <p className="text-lg text-on-surface-variant leading-relaxed">
-              Situato all’interno del <span className="text-primary font-semibold">Parco dell’Acqua a Brescia</span>, Arcadia Lab si trova nella Sala Energic Ambiente, proprio sopra il ristorante “Mondo Liquido”. Uno spazio luminoso e accogliente, dove il legno naturale e la quiete del parco creano un ambiente ideale per muoversi, respirare e ritrovare equilibrio. <br />
-              <span className="text-sm italic opacity-80 block mt-4">Accesso diretto alla sala dal parco.</span>
+              Situato all’interno del <span className="text-primary font-semibold">Parco dell’Acqua a Brescia</span>, Arcadia Lab si trova nella Sala Energic Ambiente, con accesso diretto dal parco. Uno spazio luminoso e accogliente, dove il legno naturale delle travi, la luce che filtra dalle finestre affacciate sul verde e la quiete del parco creano un ambiente ideale per muoversi, respirare e ritrovare equilibrio.
             </p>
             
             <div className="space-y-6 pt-4">
@@ -48,7 +47,7 @@ export default function Studio() {
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                   <span className="material-symbols-outlined text-primary">directions_walk</span>
                 </div>
-                <p className="text-sm text-on-surface-variant tracking-wide">Accesso diretto dall'area verde cittadina.</p>
+                <p className="text-sm text-on-surface-variant tracking-wide">Accesso diretto alla sala dall’ingresso del parco.</p>
               </motion.div>
             </div>
           </motion.div>
