@@ -3,14 +3,25 @@ import { useEffect, useState, useRef } from "react";
 
 export default function Hero() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLElement>(null);
   const { scrollY } = useScroll();
 
-  // Parallax effects - softened for smoother transition and to avoid gaps
-  const y1 = useTransform(scrollY, [0, 800], [0, 150]);
-  const y2 = useTransform(scrollY, [0, 800], [0, -100]);
-  const opacity = useTransform(scrollY, [0, 400], [1, 0]);
-  const scale = useTransform(scrollY, [0, 400], [1, 1.05]);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Parallax effects - softened and delayed on mobile to allow image visibility
+  const scrollRange = isMobile ? [300, 1100] : [0, 800];
+  const opacityRange = isMobile ? [300, 700] : [0, 400];
+
+  const y1 = useTransform(scrollY, scrollRange, [0, 150]);
+  const y2 = useTransform(scrollY, scrollRange, [0, -100]);
+  const opacity = useTransform(scrollY, opacityRange, [1, 0]);
+  const scale = useTransform(scrollY, opacityRange, [1, 1.05]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
