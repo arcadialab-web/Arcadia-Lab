@@ -134,17 +134,16 @@ export default function Hero() {
             />
           </motion.div>
 
-          {/* Precise replication of the label from the image - Adjusted size and position for visibility */}
+          {/* Adaptive Label - Consistency with the top one and improved legibility */}
           <motion.div 
             style={{ 
-              x: useTransform(springX, (v) => v - 20), 
-              y: useTransform(springY, (v) => v + 20),
+              x: useTransform(springX, (v) => v - 10), 
+              y: useTransform(springY, (v) => v + 10),
               background: "radial-gradient(circle at 30% 30%, #e2ded5 0%, #c4bdb0 100%)",
-              opacity: 0.98
             }}
-            className="absolute bottom-[5px] -left-12 w-48 h-48 md:w-52 md:h-52 rounded-full flex flex-col items-center justify-center p-8 text-center shadow-[0_15px_40px_rgba(0,0,0,0.1)] z-20 backdrop-blur-md border border-white/40 group/label"
+            className="absolute bottom-4 -left-4 md:bottom-2 md:-left-8 w-32 h-32 md:w-40 md:h-40 rounded-full flex flex-col items-center justify-center p-4 md:p-6 text-center shadow-2xl z-20 backdrop-blur-md border border-white/40 shadow-primary/10"
           >
-            <p className="text-[9px] md:text-[10px] font-label tracking-[0.4em] uppercase text-on-surface-variant/70 font-semibold leading-relaxed">
+            <p className="text-[10px] md:text-xs font-label tracking-[0.3em] uppercase text-on-surface font-bold leading-relaxed">
               Elasticità, Forza <br />
               ed Equilibrio
             </p>
@@ -153,9 +152,9 @@ export default function Hero() {
           {/* Decorative Floating Element - Moved to foreground with text */}
           <motion.div 
             style={{ y: y2, x: useTransform(springX, (v) => -v * 0.8) }}
-            className="absolute -top-12 -right-12 w-32 h-32 md:w-36 md:h-36 bg-primary/20 backdrop-blur-xl rounded-full border border-white/40 z-30 animate-float flex items-center justify-center text-center p-4 shadow-xl shadow-primary/10"
+            className="absolute -top-12 -right-12 w-32 h-32 md:w-40 md:h-40 bg-primary/90 backdrop-blur-xl rounded-full border border-white/20 z-30 animate-float flex items-center justify-center text-center p-4 shadow-2xl shadow-primary/20"
           >
-            <p className="font-serif italic text-primary text-xs md:text-sm font-medium leading-tight">
+            <p className="font-serif italic text-white text-base md:text-lg font-medium leading-tight">
               Yoga è <br />
               stupore!
             </p>
