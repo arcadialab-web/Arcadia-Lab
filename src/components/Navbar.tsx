@@ -25,6 +25,14 @@ export default function Navbar() {
     { name: 'Abbonamenti', href: '/#pricing', id: 'pricing' },
   ];
 
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (location.pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    setIsMobileMenuOpen(false);
+  };
+
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     if (location.pathname === '/') {
       e.preventDefault();
@@ -52,7 +60,7 @@ export default function Navbar() {
             whileTap={{ scale: 0.95 }}
             className="z-[60] relative hover:opacity-80 transition-opacity"
           >
-            <Link to="/" className="flex items-center" onClick={() => setIsMobileMenuOpen(false)}>
+            <Link to="/" className="flex items-center" onClick={handleLogoClick}>
               <div className="relative w-16 md:w-20 h-10 flex justify-center items-center mr-2">
                 <img 
                   src="https://fnvchbtcytugkrtnrvyj.supabase.co/storage/v1/object/public/Logo%20piattaforma/ARCADIA%20LAB%20(1).png" 
