@@ -12,39 +12,27 @@ export default function Courses() {
             transition={{ duration: 1 }}
             className="max-w-2xl"
           >
-            <h2 className="text-4xl font-serif italic mb-6">Corsi Arcadia</h2>
-            <p className="text-on-surface-variant font-medium">
-              Foundations, Sparkle & Expansion
-            </p>
+            <h2 className="text-4xl font-serif italic mb-6">Corsi Arcadia.</h2>
             <p className="text-on-surface-variant mt-2 max-w-lg">
               Tre appuntamenti settimanali pensati per ogni livello. Una pratica che radica, una che trasforma e una che espande.
             </p>
-          </motion.div>
-          <motion.div 
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1, delay: 0.2 }}
-            className="pb-2 text-right"
-          >
-            <span className="text-xs text-on-surface-variant tracking-widest uppercase font-label">Nessuna esperienza richiesta</span>
           </motion.div>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
           {[
-            {
-              title: "Vinyasa Foundations",
-              time: "Martedì • 19:30",
-              desc: "Una pratica fluida e accessibile, pensata per ritrovare le fondamenta del movimento. L’attenzione agli allineamenti rende questa lezione preziosa per costruire una base solida e consapevole.",
-              btn: "Prenota Martedì"
-            },
-            {
-              title: "Katonah Yoga Sparkle",
-              time: "Mercoledì • 19:00",
-              desc: "Una pratica dinamica che unisce geometria, respiro e immaginazione, ispirata al Katonah Yoga. Integra la fluidità del Vinyasa, la struttura dell’Ashtanga e i principi del taoismo.",
-              btn: "Prenota Mercoledì"
-            },
+              {
+                title: "Vinyasa Foundations",
+                time: "Martedì • 19:30 / 20:30",
+                desc: "Una pratica fluida e accessibile, pensata per ritrovare le fondamenta del movimento. L’attenzione agli allineamenti rende questa lezione preziosa per costruire una base solida e consapevole.",
+                btn: "Prenota Martedì"
+              },
+              {
+                title: "Katonah Yoga Inspired",
+                time: "Mercoledì • 19:00 / 20:00",
+                desc: "Una pratica dinamica che unisce geometria, respiro e immaginazione, ispirata al Katonah Yoga. Integra la fluidità del Vinyasa, la struttura dell’Ashtanga e i principi del taoismo.",
+                btn: "Prenota Mercoledì"
+              },
             {
               title: "Vinyasa Expansion",
               time: "Giovedì • 19:00 — 20:00",
@@ -97,16 +85,6 @@ export default function Courses() {
           ))}
         </div>
 
-        <motion.div 
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="text-center mt-12"
-        >
-          <p className="text-sm text-on-surface-variant italic opacity-80">
-            *Nessuna lezione in luglio e agosto.
-          </p>
-        </motion.div>
       </div>
     </section>
   );

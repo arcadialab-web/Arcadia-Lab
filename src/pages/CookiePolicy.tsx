@@ -44,7 +44,7 @@ export default function CookiePolicy() {
             <div className="space-y-4">
               <h2 className="text-2xl font-serif text-on-surface">4. Contatti</h2>
               <p>
-                Per qualsiasi domanda sulla nostra Cookie Policy, puoi contattarci all'indirizzo <a href="mailto:yogacinziayoga@gmail.com" className="text-primary hover:underline">yogacinziayoga@gmail.com</a>.
+                Per qualsiasi domanda sulla nostra Cookie Policy, puoi contattarci all'indirizzo <a href="mailto:arcadialabyoga@gmail.com" className="text-primary hover:underline">arcadialabyoga@gmail.com</a>.
               </p>
             </div>
           </section>

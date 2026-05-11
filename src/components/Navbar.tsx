@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Instagram } from 'lucide-react';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -17,8 +18,8 @@ export default function Navbar() {
   }, []);
 
   const navLinks = [
-    { name: 'Studio', href: '/#studio', id: 'studio' },
     { name: 'Chi sono', href: '/#chi-sono', id: 'chi-sono' },
+    { name: 'Studio', href: '/#studio', id: 'studio' },
     { name: 'Corsi', href: '/#courses', id: 'courses' },
     { name: 'Workshop', href: '/#workshops', id: 'workshops' },
     { name: 'Abbonamenti', href: '/#pricing', id: 'pricing' },
@@ -43,29 +44,31 @@ export default function Navbar() {
           : 'bg-transparent py-8'
       }`}
     >
-      <div className="container mx-auto px-6 flex justify-between items-center">
-        {/* LOGO */}
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="z-[60] relative hover:opacity-80 transition-opacity"
-        >
-          <Link to="/" className="flex items-center" onClick={() => setIsMobileMenuOpen(false)}>
-            <div className="relative w-16 md:w-20 h-10 flex justify-center items-center mr-2">
-              <img 
-                src="https://fnvchbtcytugkrtnrvyj.supabase.co/storage/v1/object/public/Logo%20piattaforma/Logo%20senza%20scritta%20.png" 
-                alt="Punto Arcadia Lab" 
-                className="absolute h-[70px] md:h-[90px] object-contain drop-shadow-md max-w-none" 
-              />
-            </div>
-            <span className="text-2xl font-serif italic text-primary tracking-tight">
-              Arcadia Lab
-            </span>
-          </Link>
-        </motion.div>
+      <div className="container mx-auto px-6 flex items-center justify-between lg:justify-start">
+        {/* LOGO AREA */}
+        <div className="flex-1 flex justify-start">
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="z-[60] relative hover:opacity-80 transition-opacity"
+          >
+            <Link to="/" className="flex items-center" onClick={() => setIsMobileMenuOpen(false)}>
+              <div className="relative w-16 md:w-20 h-10 flex justify-center items-center mr-2">
+                <img 
+                  src="https://fnvchbtcytugkrtnrvyj.supabase.co/storage/v1/object/public/Logo%20piattaforma/ARCADIA%20LAB%20(1).png" 
+                  alt="Punto Arcadia Lab." 
+                  className="absolute h-[70px] md:h-[90px] object-contain drop-shadow-md max-w-none" 
+                />
+              </div>
+              <span className="text-2xl font-serif italic text-primary tracking-tight">
+                Arcadia Lab.
+              </span>
+            </Link>
+          </motion.div>
+        </div>
 
-        {/* DESKTOP MENU */}
-        <div className="hidden lg:flex items-center gap-10">
+        {/* DESKTOP MENU - CENTERED */}
+        <div className="hidden lg:flex justify-center">
           <div className="flex gap-8 items-center">
             {navLinks.map((link) => (
               <motion.a
@@ -82,6 +85,21 @@ export default function Navbar() {
               </motion.a>
             ))}
           </div>
+        </div>
+
+        {/* DESKTOP CTA - RIGHT */}
+        <div className="hidden lg:flex flex-1 justify-end items-center gap-6">
+          <motion.a
+            href="https://www.instagram.com/arcadialab.cinzia/"
+            target="_blank"
+            rel="noopener noreferrer"
+            whileHover={{ scale: 1.1, rotate: 5 }}
+            whileTap={{ scale: 0.9 }}
+            className="text-on-surface-variant hover:bg-primary hover:text-white transition-all duration-300 h-10 w-10 flex items-center justify-center rounded-full bg-surface-container-low"
+          >
+            <Instagram size={20} strokeWidth={1.5} />
+          </motion.a>
+          
           <Link 
             to="/#register" 
             onClick={(e) => handleNavClick(e, 'register')}
@@ -98,18 +116,20 @@ export default function Navbar() {
         </div>
 
         {/* MOBILE TOGGLE ICON */}
-        <button
-          className="lg:hidden z-[60] relative text-primary p-2 -mr-2"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          aria-label="Toggle menu"
-        >
-          <motion.span 
-            animate={{ rotate: isMobileMenuOpen ? 90 : 0 }}
-            className="material-symbols-outlined text-3xl font-light"
+        <div className="lg:hidden flex items-center z-[60]">
+          <button
+            className="text-primary p-2 -mr-2"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle menu"
           >
-            {isMobileMenuOpen ? 'close' : 'menu'}
-          </motion.span>
-        </button>
+            <motion.span 
+              animate={{ rotate: isMobileMenuOpen ? 90 : 0 }}
+              className="material-symbols-outlined text-3xl font-light"
+            >
+              {isMobileMenuOpen ? 'close' : 'menu'}
+            </motion.span>
+          </button>
+        </div>
       </div>
 
       {/* MOBILE FULLSCREEN MENU */}
@@ -141,25 +161,39 @@ export default function Navbar() {
                 </motion.a>
               ))}
               
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                transition={{ delay: navLinks.length * 0.05 + 0.1, duration: 0.4 }}
-                className="mt-10"
-              >
-                <Link
-                  to="/#register"
-                  onClick={(e) => handleNavClick(e, 'register')}
-                  className="block bg-primary text-white px-8 py-5 rounded-full text-sm uppercase tracking-[0.2em] font-bold w-full shadow-2xl active:scale-95 transition-transform text-center"
+                <motion.a
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10, transition: { duration: 0.2 } }}
+                  transition={{ delay: navLinks.length * 0.05 + 0.05, duration: 0.4 }}
+                  href="https://www.instagram.com/arcadialab.cinzia/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-3 text-on-surface-variant hover:text-primary transition-colors py-2"
                 >
-                  Prenota la tua lezione
-                </Link>
-              </motion.div>
+                  <Instagram size={24} strokeWidth={1} />
+                  <span className="font-serif italic text-xl">Instagram</span>
+                </motion.a>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ delay: navLinks.length * 0.05 + 0.1, duration: 0.4 }}
+                  className="mt-6"
+                >
+                  <Link
+                    to="/#register"
+                    onClick={(e) => handleNavClick(e, 'register')}
+                    className="block bg-primary text-white px-8 py-5 rounded-full text-sm uppercase tracking-[0.2em] font-bold w-full shadow-2xl active:scale-95 transition-transform text-center"
+                  >
+                    Prenota la tua lezione
+                  </Link>
+                </motion.div>
             </div>
             
             <div className="absolute bottom-12 text-center w-full">
-              <span className="font-serif italic text-on-surface-variant text-sm">Arcadia Lab</span>
+              <span className="font-serif italic text-on-surface-variant text-sm">Arcadia Lab.</span>
             </div>
           </motion.div>
         )}

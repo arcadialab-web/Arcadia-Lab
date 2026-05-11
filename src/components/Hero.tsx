@@ -67,7 +67,7 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 1 }}
           >
-            <span className="text-primary font-label tracking-[0.3em] uppercase text-xs mb-4 block">Arcadia Lab Yoga</span>
+            <span className="text-primary font-label tracking-[0.3em] uppercase text-xs mb-4 block">Arcadia Lab. Yoga</span>
             <h1 className="text-5xl md:text-7xl lg:text-8xl text-on-surface leading-[1.05] font-serif">
               Respira dove <br />
               <motion.span 
@@ -87,7 +87,7 @@ export default function Hero() {
             transition={{ delay: 1, duration: 1 }}
             className="text-xl md:text-2xl text-on-surface-variant max-w-lg font-light leading-relaxed"
           >
-            Accademia di Yoga — Pratiche che integrano biomeccanica, adattabilità e forza interiore per trasformare corpo ed emozioni e ritrovare chiarezza.
+            Accademia di Yoga — Pratiche che integrano struttura, adattabilità e forza interiore per trasformare corpo ed emozioni e ritrovare chiarezza.
           </motion.p>
 
           <motion.div 

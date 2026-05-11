@@ -1,7 +1,17 @@
+import React from "react";
 import { motion } from "framer-motion";
 import { Calendar } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function Workshops() {
+  const handleScrollToRegister = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const element = document.getElementById('register');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <section className="py-32 bg-surface overflow-hidden" id="workshops">
       <div className="container mx-auto px-6">
@@ -48,17 +58,22 @@ export default function Workshops() {
               transition={{ delay: 0.8 }}
               className="text-xl opacity-90 leading-relaxed mb-12 font-light"
             >
-              Approfondimenti mensili dedicati a temi specifici: meditazione profonda, chakra balance e tecniche avanzate di inversione. Un tempo dilatato per la tua crescita.
+              Approfondimenti mensili dedicati a temi specifici. Un tempo dilatato per la tua crescita.
             </motion.p>
             
-            <motion.button 
-              whileHover={{ scale: 1.05, y: -5 }}
-              whileTap={{ scale: 0.98 }}
-              className="bg-white text-primary px-10 md:px-14 py-5 rounded-full font-bold tracking-[0.2em] uppercase text-[10px] md:text-xs shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] transition-all flex items-center gap-3 group border-none"
+            <Link 
+              to="/#register"
+              onClick={handleScrollToRegister}
             >
-              <span>Calendario Workshop</span>
-              <Calendar size={18} className="group-hover:translate-x-1 transition-transform" />
-            </motion.button>
+              <motion.button 
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.98 }}
+                className="bg-white text-primary px-10 md:px-14 py-5 rounded-full font-bold tracking-[0.2em] uppercase text-[10px] md:text-xs shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] transition-all flex items-center gap-3 group border-none"
+              >
+                <span>Calendario Workshop</span>
+                <Calendar size={18} className="group-hover:translate-x-1 transition-transform" />
+              </motion.button>
+            </Link>
           </div>
 
 

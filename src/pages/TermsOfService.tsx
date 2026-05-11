@@ -21,7 +21,7 @@ export default function TermsOfService() {
             <div className="space-y-4">
               <h2 className="text-2xl font-serif text-on-surface">1. Accettazione dei Termini</h2>
               <p>
-                L'accesso e l'uso di Arcadia Lab (www.arcadialab.it) sono regolati dai presenti Termini di Servizio. Utilizzando il sito e i nostri servizi, accetti integralmente queste condizioni.
+                L'accesso e l'uso di Arcadia Lab. (www.arcadialab.it) sono regolati dai presenti Termini di Servizio. Utilizzando il sito e i nostri servizi, accetti integralmente queste condizioni.
               </p>
             </div>
 
@@ -35,7 +35,7 @@ export default function TermsOfService() {
             <div className="space-y-4">
               <h2 className="text-2xl font-serif text-on-surface">3. Requisiti di Salute</h2>
               <p>
-                Per partecipare a tutte le lezioni di Yoga è obbligatorio presentare un certificato medico di buona salute in corso di validità. Arcadia Lab declina ogni responsabilità per infortuni derivanti dalla mancata segnalazione di condizioni mediche preesistenti.
+                Per partecipare a tutte le lezioni di Yoga è obbligatorio presentare un certificato medico di buona salute in corso di validità. Arcadia Lab. declina ogni responsabilità per infortuni derivanti dalla mancata segnalazione di condizioni mediche preesistenti.
               </p>
             </div>
 
@@ -49,7 +49,7 @@ export default function TermsOfService() {
             <div className="space-y-4">
               <h2 className="text-2xl font-serif text-on-surface">5. Proprietà Intellettuale</h2>
               <p>
-                Tutti i contenuti presenti sul sito (testi, immagini, logo) sono di proprietà di Arcadia Lab e Cinzia [Cognome] e non possono essere riprodotti senza autorizzazione scritta.
+                Tutti i contenuti presenti sul sito (testi, immagini, logo) sono di proprietà di Arcadia Lab. e Cinzia [Cognome] e non possono essere riprodotti senza autorizzazione scritta.
               </p>
             </div>
           </section>

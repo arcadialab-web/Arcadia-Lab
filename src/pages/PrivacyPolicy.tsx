@@ -21,14 +21,14 @@ export default function PrivacyPolicy() {
             <div className="space-y-4">
               <h2 className="text-2xl font-serif text-on-surface">1. Informazioni generali</h2>
               <p>
-                Benvenuti su Arcadia Lab (www.arcadialab.it). La tua privacy è estremamente importante per noi. Questa politica descrive come raccogliamo, utilizziamo e proteggiamo i tuoi dati personali quando visiti il nostro sito e utilizzi i nostri servizi.
+                Benvenuti su Arcadia Lab. (www.arcadialab.it). La tua privacy è estremamente importante per noi. Questa politica descrive come raccogliamo, utilizziamo e proteggiamo i tuoi dati personali quando visiti il nostro sito e utilizzi i nostri servizi.
               </p>
             </div>
 
             <div className="space-y-4">
               <h2 className="text-2xl font-serif text-on-surface">2. Titolare del Trattamento</h2>
               <p>
-                Il titolare del trattamento dei dati è Cinzia [Cognome], P.IVA 04712510983, con sede operativa a Brescia, Italia. Email di contatto: <a href="mailto:yogacinziayoga@gmail.com" className="text-primary hover:underline">yogacinziayoga@gmail.com</a>.
+                Il titolare del trattamento dei dati è Cinzia [Cognome], P.IVA 04712510983, con sede operativa a Brescia, Italia. Email di contatto: <a href="mailto:arcadialabyoga@gmail.com" className="text-primary hover:underline">arcadialabyoga@gmail.com</a>.
               </p>
             </div>
 
@@ -55,7 +55,7 @@ export default function PrivacyPolicy() {
             <div className="space-y-4">
               <h2 className="text-2xl font-serif text-on-surface">5. I tuoi diritti</h2>
               <p>
-                In conformità con il GDPR (UE 2016/679), hai il diritto di accedere ai tuoi dati, chiederne la rettifica, la cancellazione o la limitazione del trattamento. Per esercitare questi diritti, scrivici a <a href="mailto:yogacinziayoga@gmail.com" className="text-primary hover:underline">yogacinziayoga@gmail.com</a>.
+                In conformità con il GDPR (UE 2016/679), hai il diritto di accedere ai tuoi dati, chiederne la rettifica, la cancellazione o la limitazione del trattamento. Per esercitare questi diritti, scrivici a <a href="mailto:arcadialabyoga@gmail.com" className="text-primary hover:underline">arcadialabyoga@gmail.com</a>.
               </p>
             </div>
           </section>

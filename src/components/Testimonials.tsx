@@ -27,7 +27,7 @@ export default function Testimonials() {
     },
     {
       name: "francesco fornari",
-      text: "Con Arcadia Lab, Cinzia ha creato qualcosa di davvero speciale. Praticare yoga vinyasa con lei fa bene sia al corpo che alla mente.",
+      text: "Con Arcadia Lab., Cinzia ha creato qualcosa di davvero speciale. Praticare yoga vinyasa con lei fa bene sia al corpo che alla mente.",
       rating: 5
     },
     {

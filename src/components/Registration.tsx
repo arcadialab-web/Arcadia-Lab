@@ -83,11 +83,11 @@ export default function Registration() {
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-primary font-light">phone_iphone</span>
-                  <p className="font-medium">346 677 0909</p>
+                  <p className="font-medium">+39 346 677 0909</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-primary font-light">mail</span>
-                  <a href="mailto:yogacinziayoga@gmail.com" className="font-medium hover:text-primary transition-colors">yogacinziayoga@gmail.com</a>
+                  <a href="mailto:arcadialabyoga@gmail.com" className="font-medium hover:text-primary transition-colors">arcadialabyoga@gmail.com</a>
                 </div>
               </div>
             </div>
@@ -123,12 +123,23 @@ export default function Registration() {
                 <div className="relative">
                   <select id="abbonamento" name="abbonamento" required defaultValue="" className="bg-transparent border-b border-outline-variant focus:border-primary transition-colors py-2 outline-none text-on-surface appearance-none w-full cursor-pointer rounded-none">
                     <option value="" disabled>Seleziona un'opzione...</option>
-                    <option value="coupon">Coupon — 10 lezioni (€ 120)</option>
-                    <option value="mensile_1x">Mensile 1× — 1 volta a settimana (€ 44)</option>
-                    <option value="mensile_2x">Mensile 2× — 2 volte a settimana (€ 72)</option>
-                    <option value="trimestrale_1x">Trimestrale 1× — 1 volta a settimana (€ 120)</option>
-                    <option value="trimestrale_2x">Trimestrale 2× — 2 volte a settimana (€ 192)</option>
-                    <option value="singola">Lezione Singola di prova (€ 20)</option>
+                    <option value="carnet_10">10 Ingressi (€ 135)</option>
+                    <optgroup label="1 volta / settimana">
+                      <option value="1x_mensile">Mensile — 1 volta/sett. (€ 49)</option>
+                      <option value="1x_trimestrale">Trimestrale — 1 volta/sett. (€ 133)</option>
+                      <option value="1x_stagionale">Stagionale — 1 volta/sett. (€ 380)</option>
+                    </optgroup>
+                    <optgroup label="2 volte / settimana">
+                      <option value="2x_mensile">Mensile — 2 volte/sett. (€ 80)</option>
+                      <option value="2x_trimestrale">Trimestrale — 2 volte/sett. (€ 213)</option>
+                      <option value="2x_stagionale">Stagionale — 2 volte/sett. (€ 590)</option>
+                    </optgroup>
+                    <optgroup label="3 volte / settimana">
+                      <option value="3x_mensile">Mensile — 3 volte/sett. (€ 108)</option>
+                      <option value="3x_trimestrale">Trimestrale — 3 volte/sett. (€ 290)</option>
+                      <option value="3x_stagionale">Stagionale — 3 volte/sett. (€ 820)</option>
+                    </optgroup>
+                    <option value="prova">Lezione Singola di prova (€ 20)</option>
                   </select>
                   <span className="material-symbols-outlined absolute right-2 top-2 pointer-events-none text-outline-variant group-focus-within:text-primary transition-colors">expand_more</span>
                 </div>
@@ -147,16 +158,6 @@ export default function Registration() {
                   </div>
                   <span className="text-sm text-on-surface-variant leading-relaxed group-hover:text-on-surface transition-colors">
                     Ho compreso che per completare l'iscrizione è <strong>obbligatorio</strong> presentare un certificato medico di sana e robusta costituzione.
-                  </span>
-                </label>
-                
-                <label className="flex items-start gap-4 cursor-pointer group">
-                  <div className="relative flex items-center justify-center mt-0.5">
-                    <input type="checkbox" name="accetto_tessera" required className="peer appearance-none w-5 h-5 border border-outline-variant rounded-sm checked:bg-primary checked:border-primary transition-colors cursor-pointer" />
-                    <span className="material-symbols-outlined absolute text-white text-sm opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity font-bold">check</span>
-                  </div>
-                  <span className="text-sm text-on-surface-variant leading-relaxed group-hover:text-on-surface transition-colors">
-                    Accetto il pagamento extra della tessera associativa/assicurativa annuale di € 20.
                   </span>
                 </label>
 

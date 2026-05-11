@@ -23,22 +23,24 @@ export default function Studio() {
           >
             <h2 className="text-4xl md:text-5xl font-serif">Un luogo, non solo uno spazio.</h2>
             <p className="text-lg text-on-surface-variant leading-relaxed">
-              Situato all’interno del <span className="text-primary font-semibold">Parco dell’Acqua a Brescia</span>, Arcadia Lab si trova nella Sala Energic Ambiente, con accesso diretto dal parco. Uno spazio luminoso e accogliente, dove il legno naturale delle travi, la luce che filtra dalle finestre affacciate sul verde e la quiete del parco creano un ambiente ideale per muoversi, respirare e ritrovare equilibrio.
+              Situato all’interno del <span className="text-primary font-semibold">Parco dell’Acqua a Brescia</span>, Arcadia Lab. si trova nella Sala Energic Ambiente, con accesso diretto dal parco. Uno spazio luminoso e accogliente, dove il legno naturale delle travi, la luce che filtra dalle finestre affacciate sul verde e la quiete del parco creano un ambiente ideale per muoversi, respirare e ritrovare equilibrio.
             </p>
             
             <div className="space-y-6 pt-4">
-              <motion.div 
-                whileHover={{ x: 10 }}
-                className="flex items-center gap-6 p-4 rounded-2xl glass-dark border-none shadow-sm transition-all"
+              <a 
+                href="https://www.google.com/maps/search/?api=1&query=Sala+Energic+Ambiente+Largo+Torrelunga+7+Brescia"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-6 p-4 rounded-2xl glass-dark border-none shadow-sm transition-all hover:bg-primary/5 group"
               >
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-primary">location_on</span>
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+                  <span className="material-symbols-outlined text-primary group-hover:text-inherit">location_on</span>
                 </div>
                 <div>
-                  <p className="font-serif">Sala Energic Ambiente</p>
+                  <p className="font-serif group-hover:text-primary transition-colors">Sala Energic Ambiente</p>
                   <p className="text-xs text-on-surface-variant uppercase tracking-widest">Largo Torrelunga 7, Brescia</p>
                 </div>
-              </motion.div>
+              </a>
 
               <motion.div 
                 whileHover={{ x: 10 }}
@@ -52,25 +54,38 @@ export default function Studio() {
             </div>
           </motion.div>
 
-          <div className="lg:col-span-7 perspective-container">
+          <div className="lg:col-span-7 relative h-[500px] md:h-[650px]">
+            {/* Background Image / Image 1 */}
             <motion.div 
               style={{ y: imageY }}
-              initial={{ opacity: 0, scale: 1.1 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 1.5, ease: "easeOut" }}
-              className="rounded-3xl overflow-hidden shadow-[0_60px_120px_-20px_rgba(0,0,0,0.3)] relative border border-white/20"
+              transition={{ duration: 1.2 }}
+              className="absolute top-0 right-0 w-[88%] h-[75%] rounded-3xl overflow-hidden shadow-xl border border-white/20 z-0"
             >
-              <motion.img
-                alt="Parco dell'Acqua - Arcadia Lab"
-                className="w-full h-auto object-contain"
-                src="https://fnvchbtcytugkrtnrvyj.supabase.co/storage/v1/object/sign/Foto%20sito/Parco%20dell%20acqua.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV81NzE2NTYwMS0yY2YzLTQzODUtOGE1Ni04ODdkZDI3MGY0OTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJGb3RvIHNpdG8vUGFyY28gZGVsbCBhY3F1YS5qcGciLCJpYXQiOjE3NzY5NjYwNzIsImV4cCI6MTkzNDY0NjA3Mn0.btjOrExqjHJaG8IbH5uhcZXmRaphDw3v7XL6MVOJYrg"
+              <img
+                alt="Sala Energic Ambiente - Arcadia Lab"
+                className="w-full h-full object-cover"
+                src="https://fnvchbtcytugkrtnrvyj.supabase.co/storage/v1/object/sign/Foto%20sito/Sala%20Energic.ambiente.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV81NzE2NTYwMS0yY2YzLTQzODUtOGE1Ni04ODdkZDI3MGY0OTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJGb3RvIHNpdG8vU2FsYSBFbmVyZ2ljLmFtYmllbnRlLnBuZyIsImlhdCI6MTc3ODUxNzUzMCwiZXhwIjoyMDkzODc3NTMwfQ.g3s6qq3vg49G5Zybx-C9atJA8sr9WQS2h8r2GcGFGZM"
                 referrerPolicy="no-referrer"
-                whileHover={{ scale: 1.05 }}
-                transition={{ duration: 0.8 }}
               />
-              
-              <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/20 to-transparent" />
+            </motion.div>
+
+            {/* Foreground Image / Image 2 */}
+            <motion.div 
+              initial={{ opacity: 0, x: -30, y: 50 }}
+              whileInView={{ opacity: 1, x: 0, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.5, delay: 0.3 }}
+              className="absolute bottom-0 left-0 w-[55%] h-[50%] rounded-3xl overflow-hidden shadow-2xl border border-white/30 z-10"
+            >
+              <img
+                alt="Arcadia Lab Studio View"
+                className="w-full h-full object-cover"
+                src="https://fnvchbtcytugkrtnrvyj.supabase.co/storage/v1/object/sign/Foto%20sito/ARCADIA%20SALA%20BIS.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV81NzE2NTYwMS0yY2YzLTQzODUtOGE1Ni04ODdkZDI3MGY0OTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJGb3RvIHNpdG8vQVJDQURJQSBTQUxBIEJJUy5qcGciLCJpYXQiOjE3Nzg1MTc2NDUsImV4cCI6MTkzNjE5NzY0NX0.uVCQXuALwi5_Z0XRmaxbyFBheW8qebQ3tle78jgje_I"
+                referrerPolicy="no-referrer"
+              />
             </motion.div>
           </div>
         </div>

@@ -8,19 +8,24 @@ export default function Footer() {
         <div className="max-w-4xl px-6 md:px-12 pt-20 pb-16">
           <div className="space-y-12">
             <div>
-              <h2 className="text-5xl font-serif italic text-primary mb-4">Arcadia Lab</h2>
+              <h2 className="text-5xl font-serif italic text-primary mb-4">Arcadia Lab.</h2>
               <p className="text-on-surface-variant text-lg">Inizia il tuo percorso con Arcadia Lab.</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-4">
                 <h4 className="font-label uppercase text-xs tracking-widest font-bold text-on-surface">Indirizzo</h4>
-                <p className="text-on-surface-variant leading-relaxed">
-                  Arcadia Lab · Sala Energic.ambiente<br/>
+                <a 
+                  href="https://www.google.com/maps/search/?api=1&query=Sala+Energic+Ambiente+Largo+Torrelunga+7+Brescia"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-on-surface-variant leading-relaxed hover:text-primary transition-colors block"
+                >
+                  Arcadia Lab. · Sala Energic.ambiente<br/>
                   (sopra Mondo Liquido)<br/>
                   C/O Parco Dell'Acqua<br/>
                   Largo Torrelunga 7, Brescia
-                </p>
+                </a>
               </div>
               <div className="space-y-4">
                 <h4 className="font-label uppercase text-xs tracking-widest font-bold text-on-surface">Contatti</h4>
@@ -28,7 +33,7 @@ export default function Footer() {
                   <div className="text-on-surface-variant leading-relaxed">
                     <a href="tel:+393466770909" className="hover:text-primary transition-colors flex items-center gap-2">
                       <span className="material-symbols-outlined text-sm">call</span>
-                      346 677 0909
+                      +39 346 677 0909
                     </a>
                     <a href="mailto:arcadialabyoga@gmail.com" className="hover:text-primary transition-colors flex items-center gap-2 mt-1">
                       <span className="material-symbols-outlined text-sm">mail</span>

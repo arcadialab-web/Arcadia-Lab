@@ -3,8 +3,8 @@ import { motion } from 'framer-motion';
 export default function Pricing() {
   const subscriptions = [
     {
-      frequency: "1 volta / sett.",
-      icon: "diversity_1",
+      num: "1",
+      frequency: "volta / settimana",
       options: [
         { formula: "Mensile", price: "49", label: "" },
         { formula: "Trimestrale", price: "133", label: "risparmia € 14" },
@@ -12,8 +12,8 @@ export default function Pricing() {
       ]
     },
     {
-      frequency: "2 volte / sett.",
-      icon: "diversity_2",
+      num: "2",
+      frequency: "volte / settimana",
       options: [
         { formula: "Mensile", price: "80", label: "" },
         { formula: "Trimestrale", price: "213", label: "risparmia € 27" },
@@ -21,8 +21,8 @@ export default function Pricing() {
       ]
     },
     {
-      frequency: "3 volte / sett.",
-      icon: "diversity_3",
+      num: "3",
+      frequency: "volte / settimana",
       options: [
         { formula: "Mensile", price: "108", label: "" },
         { formula: "Trimestrale", price: "290", label: "risparmia € 34" },
@@ -48,7 +48,7 @@ export default function Pricing() {
             transition={{ delay: 0.1 }}
             className="text-4xl md:text-5xl font-serif italic mb-6"
           >
-            Unisciti ad Arcadia Lab
+            Unisciti ad Arcadia Lab.
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0, y: 10 }}
@@ -56,32 +56,39 @@ export default function Pricing() {
             transition={{ delay: 0.2 }}
             className="text-on-surface-variant max-w-xl mx-auto"
           >
-            Scegli il ritmo che fa per te. Tutti gli abbonamenti danno accesso a entrambe le lezioni settimanali.
+            Scegli il ritmo che fa per te. Tutti gli abbonamenti danno accesso a qualsiasi delle lezioni settimanali.
           </motion.p>
         </div>
         
         <div className="grid lg:grid-cols-3 gap-8 mb-16">
           {subscriptions.map((sub, i) => (
             <motion.div 
-              key={sub.frequency}
+              key={sub.frequency + i}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               className="bg-white p-8 md:p-10 rounded-3xl shadow-sm border border-outline-variant/10 flex flex-col hover:shadow-xl transition-all duration-500 group"
             >
-              <div className="flex items-center gap-4 mb-10">
-                <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-500">
-                  <span className="material-symbols-outlined">{sub.icon}</span>
+              <div className="flex items-center gap-2 mb-10">
+                <div className="flex-shrink-0 w-11 h-11 md:w-12 md:h-12 rounded-full border-2 border-primary/20 flex items-center justify-center text-primary font-bold text-lg md:text-xl group-hover:bg-primary group-hover:text-white transition-colors duration-500">
+                  {sub.num}
                 </div>
-                <h3 className="text-2xl font-serif">{sub.frequency}</h3>
+                <h3 className="text-lg md:text-xl lg:text-[1.35rem] font-serif whitespace-nowrap">{sub.frequency}</h3>
               </div>
 
               <div className="space-y-6 mb-12 flex-grow">
                 {sub.options.map((opt) => (
                   <div key={opt.formula} className="flex justify-between items-center group/item p-4 rounded-xl hover:bg-surface-container-low transition-colors">
                     <div>
-                      <p className="font-serif text-lg">{opt.formula}</p>
-                      <span className="text-[10px] uppercase tracking-widest font-bold text-primary/60">{opt.label}</span>
+                      <p className="font-serif text-lg">
+                        {opt.formula}
+                      </p>
+                      <div className="flex flex-col">
+                        {opt.formula === "Stagionale" && (
+                          <span className="text-[9px] italic text-on-surface-variant/80 font-medium">*(Settembre a Maggio)</span>
+                        )}
+                        <span className="text-[10px] uppercase tracking-widest font-bold text-primary/60">{opt.label}</span>
+                      </div>
                     </div>
                     <div className="text-right">
                       <span className="text-2xl font-bold text-on-surface">€ {opt.price}</span>
