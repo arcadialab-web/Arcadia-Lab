@@ -60,7 +60,7 @@ export default function About() {
           <h2 className="text-4xl md:text-5xl font-serif italic mb-6">Ciao, sono Cinzia.</h2>
           <div className="space-y-6 text-on-surface-variant leading-relaxed">
             <p className="text-lg">
-              Sono un’insegnante di Yoga certificata con una solida formazione approfondita in Vinyasa Yoga.
+              Sono un’insegnante di Yoga certificata con una solida formazione in Vinyasa Yoga.
             </p>
             <p>
               Ho approfondito pratiche dedicate alla terza età e al movimento consapevole, integrando la fluidità del Vinyasa e la visione geometrica del Katonah Yoga per rendere il corpo più forte, elastico e capace di adattarsi.

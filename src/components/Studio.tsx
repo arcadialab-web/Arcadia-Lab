@@ -67,7 +67,7 @@ export default function Studio() {
               <img
                 alt="Sala Energic Ambiente - Arcadia Lab"
                 className="w-full h-full object-cover"
-                src="https://fnvchbtcytugkrtnrvyj.supabase.co/storage/v1/object/sign/Foto%20sito/Sala%20Energic.ambiente.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV81NzE2NTYwMS0yY2YzLTQzODUtOGE1Ni04ODdkZDI3MGY0OTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJGb3RvIHNpdG8vU2FsYSBFbmVyZ2ljLmFtYmllbnRlLnBuZyIsImlhdCI6MTc3ODUxNzUzMCwiZXhwIjoyMDkzODc3NTMwfQ.g3s6qq3vg49G5Zybx-C9atJA8sr9WQS2h8r2GcGFGZM"
+                src="https://fnvchbtcytugkrtnrvyj.supabase.co/storage/v1/object/sign/Foto%20sito/struttura%20ok%20da%20usare%20.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV81NzE2NTYwMS0yY2YzLTQzODUtOGE1Ni04ODdkZDI3MGY0OTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJGb3RvIHNpdG8vc3RydXR0dXJhIG9rIGRhIHVzYXJlIC5wbmciLCJpYXQiOjE3Nzg3NTA0NTYsImV4cCI6MTkzNjQzMDQ1Nn0.JEZWt_MNV5f5K94549iyn3NguYiGPrr5ti51HJTRHNk"
                 referrerPolicy="no-referrer"
               />
             </motion.div>
