@@ -14,7 +14,7 @@ export default function PrivacyPolicy() {
         >
           <header className="space-y-4">
             <h1 className="text-5xl font-serif italic text-primary">Privacy Policy</h1>
-            <p className="text-on-surface-variant italic">Ultimo aggiornamento: 27 Aprile 2026</p>
+            <p className="text-on-surface-variant italic">Ultimo aggiornamento: 14 Maggio 2026</p>
           </header>
 
           <section className="prose prose-stone max-w-none text-on-surface-variant leading-relaxed space-y-8">
@@ -28,7 +28,7 @@ export default function PrivacyPolicy() {
             <div className="space-y-4">
               <h2 className="text-2xl font-serif text-on-surface">2. Titolare del Trattamento</h2>
               <p>
-                Il titolare del trattamento dei dati è Cinzia [Cognome], P.IVA 04712510983, con sede operativa a Brescia, Italia. Email di contatto: <a href="mailto:arcadialabyoga@gmail.com" className="text-primary hover:underline">arcadialabyoga@gmail.com</a>.
+                Il titolare del trattamento dei dati è Cinzia Bellotto, P.IVA 04712510983, con sede operativa a Brescia, Italia. Email di contatto: <a href="mailto:arcadialabyoga@gmail.com" className="text-primary hover:underline">arcadialabyoga@gmail.com</a>.
               </p>
             </div>
 

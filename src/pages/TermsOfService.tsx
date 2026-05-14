@@ -14,7 +14,7 @@ export default function TermsOfService() {
         >
           <header className="space-y-4">
             <h1 className="text-5xl font-serif italic text-primary">Termini di Servizio</h1>
-            <p className="text-on-surface-variant italic">Ultimo aggiornamento: 27 Aprile 2026</p>
+            <p className="text-on-surface-variant italic">Ultimo aggiornamento: 14 Maggio 2026</p>
           </header>
 
           <section className="prose prose-stone max-w-none text-on-surface-variant leading-relaxed space-y-8">
@@ -49,7 +49,14 @@ export default function TermsOfService() {
             <div className="space-y-4">
               <h2 className="text-2xl font-serif text-on-surface">5. Proprietà Intellettuale</h2>
               <p>
-                Tutti i contenuti presenti sul sito (testi, immagini, logo) sono di proprietà di Arcadia Lab. e Cinzia [Cognome] e non possono essere riprodotti senza autorizzazione scritta.
+                Tutti i contenuti presenti sul sito (testi, immagini, logo) sono di proprietà di Arcadia Lab. e Cinzia Bellotto e non possono essere riprodotti senza autorizzazione scritta.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-2xl font-serif text-on-surface">6. Contatti</h2>
+              <p>
+                Per qualsiasi domanda relativa ai presenti Termini di Servizio, puoi contattarci all'indirizzo <a href="mailto:arcadialabyoga@gmail.com" className="text-primary hover:underline">arcadialabyoga@gmail.com</a>.
               </p>
             </div>
           </section>
