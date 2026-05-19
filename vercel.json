@@ -2,11 +2,15 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/api/(.*)",
+      "source": "/api/auth/:path*",
       "destination": "/api/index.ts"
     },
     {
-      "source": "/(.*)",
+      "source": "/api/health-check",
+      "destination": "/api/index.ts"
+    },
+    {
+      "source": "/((?!api).*)",
       "destination": "/index.html"
     }
   ],
