@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
-export const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+export const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || "";
 
 if (!supabaseUrl || !serviceRoleKey) {
   console.error("CRITICAL: Missing Supabase URL or Service Role Key.");

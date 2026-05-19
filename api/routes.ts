@@ -14,7 +14,7 @@ apiRouter.get("/health", (req, res) => {
 });
 
 // Custom Signup with Resend Confirmation Email
-apiRouter.post("/auth/signup", async (req, res) => {
+apiRouter.post("/signup", async (req, res) => {
   const { email, password, fullName } = req.body;
 
   try {
@@ -95,7 +95,7 @@ apiRouter.post("/auth/signup", async (req, res) => {
 });
 
 // Password Recovery with Resend
-apiRouter.post("/auth/recover", async (req, res) => {
+apiRouter.post("/recover", async (req, res) => {
   const { email } = req.body;
 
   try {

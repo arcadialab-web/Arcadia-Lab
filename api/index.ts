@@ -20,11 +20,11 @@ app.get("/api/health-check", (req, res) => {
   });
 });
 
-// Using multiple mount points to be safe
+// Specific mount for auth routes called by frontend
 app.use("/api/auth", apiRouter);
-app.use("/auth", apiRouter);
+
+// Fallback for general API routes
 app.use("/api", apiRouter);
-app.use("/", apiRouter);
 
 // Fallback for all other routes to ensure JSON error
 app.use((req, res) => {
