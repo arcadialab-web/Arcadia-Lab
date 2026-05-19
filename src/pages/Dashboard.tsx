@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, BarChart2, CreditCard, Users,
   Settings, CalendarCheck, BookOpen, Star, PackagePlus,
@@ -198,29 +198,40 @@ function BookingsPanel() {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { section = 'overview' } = useParams();
+  const navigate = useNavigate();
   const admin = ADMIN_EMAILS.includes(user?.email ?? '');
   const nav = admin ? adminNav : userNav;
-  const [section, setSection] = useState('overview');
+
+  const handleSectionChange = (id: string) => {
+    navigate(`/dashboard/${id}`, { replace: true });
+  };
+
+  const validAdminSections = ['overview', 'analytics', 'plans', 'subscriptions', 'users', 'settings'];
+  const validUserSections  = ['overview', 'lessons', 'plan', 'bookings', 'settings'];
+  const validSections = admin ? validAdminSections : validUserSections;
+  const activeSection = validSections.includes(section) ? section : 'overview';
 
   const renderContent = () => {
     if (admin) {
-      switch (section) {
+      switch (activeSection) {
         case 'overview':       return <AdminDashboard />;
-        case 'analytics':     return <AnalyticsPanel />;
-        case 'plans':         return <PlansManagementPanel />;
-        case 'subscriptions': return <SubscriptionsPanel />;
-        case 'users':         return <UsersPanel />;
-        case 'settings':      return <SettingsPanel isAdmin />;
-        default:              return <AdminDashboard />;
+        case 'analytics':      return <AnalyticsPanel />;
+        case 'plans':          return <PlansManagementPanel />;
+        case 'subscriptions':  return <SubscriptionsPanel />;
+        case 'users':          return <UsersPanel />;
+        case 'settings':       return <SettingsPanel isAdmin />;
+        default:               return <AdminDashboard />;
       }
     } else {
-      switch (section) {
-        case 'overview':  return <UserDashboard userName={user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Utente'} />;
+      const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Utente';
+      switch (activeSection) {
+        case 'overview':  return <UserDashboard userName={userName} />;
         case 'lessons':   return <MyLessonsPanel />;
         case 'plan':      return <MyPlanPanel />;
         case 'bookings':  return <BookingsPanel />;
         case 'settings':  return <SettingsPanel isAdmin={false} />;
-        default:          return <UserDashboard userName={user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Utente'} />;
+        default:          return <UserDashboard userName={userName} />;
       }
     }
   };
@@ -228,8 +239,8 @@ export default function Dashboard() {
   return (
     <DashboardLayout
       navItems={nav}
-      activeSection={section}
-      onSectionChange={setSection}
+      activeSection={activeSection}
+      onSectionChange={handleSectionChange}
       isAdmin={admin}
     >
       {renderContent()}

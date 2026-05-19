@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Instagram, LayoutDashboard, LogOut, LogIn } from 'lucide-react';
+import { Instagram, LayoutDashboard, LogOut } from 'lucide-react';
+
+function PersonIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  );
+}
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
@@ -132,7 +141,7 @@ export default function Navbar() {
                   to="/auth"
                   className="flex items-center gap-2 bg-surface-container border border-outline-variant/50 text-on-surface px-5 py-2.5 rounded-full text-xs uppercase tracking-widest font-bold transition-all hover:border-primary/40 hover:text-primary"
                 >
-                  <LogIn size={14} />
+                  <PersonIcon size={14} />
                   Accedi
                 </Link>
               </motion.div>
@@ -240,7 +249,7 @@ export default function Navbar() {
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex items-center justify-center gap-2 border border-outline-variant text-on-surface px-8 py-4 rounded-full text-sm uppercase tracking-[0.2em] font-bold w-full active:scale-95 transition-transform"
                     >
-                      <LogIn size={16} />
+                      <PersonIcon size={16} />
                       Accedi
                     </Link>
                     <Link

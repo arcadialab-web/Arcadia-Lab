@@ -21,9 +21,10 @@ export default function App() {
           <Route path="/auth" element={<Auth />} />
           <Route path="/pagamento-ok" element={<PaymentSuccess />} />
           <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
+            <ProtectedRoute><Dashboard /></ProtectedRoute>
+          } />
+          <Route path="/dashboard/:section" element={
+            <ProtectedRoute><Dashboard /></ProtectedRoute>
           } />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
