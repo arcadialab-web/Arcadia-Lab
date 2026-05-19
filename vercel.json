@@ -2,12 +2,8 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/api/auth/:path*",
-      "destination": "/api/index.ts"
-    },
-    {
-      "source": "/api/health-check",
-      "destination": "/api/index.ts"
+      "source": "/api/(.*)",
+      "destination": "/api/index"
     },
     {
       "source": "/((?!api).*)",
