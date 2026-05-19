@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arcadia Lab. — Design Document Area Personale</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Manrope:wght@300;400;600;700;800&display=swap');
+
+    :root {
+      --primary: #b56a56;
+      --sage: #8ba888;
+      --cream: #fdfbf7;
+      --cream-low: #f5f1e8;
+      --cream-mid: #efebdf;
+      --dark: #2b2927;
+      --muted: #5a544c;
+      --outline: #dfd7c9;
+      --admin-color: #b56a56;
+      --user-color: #8ba888;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Manrope', sans-serif;
+      background: var(--cream);
+      color: var(--dark);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    /* ── PRINT ── */
+    @media print {
+      .no-print { display: none !important; }
+      body { font-size: 12px; }
+      .page-break { page-break-before: always; }
+      .section { page-break-inside: avoid; }
+    }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 1000px; margin: 0 auto; padding: 0 40px; }
+
+    /* ── COVER ── */
+    .cover {
+      background: linear-gradient(135deg, var(--dark) 0%, #3d3832 100%);
+      color: white;
+      padding: 80px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::before {
+      content: '';
+      position: absolute;
+      top: -100px; right: -100px;
+      width: 400px; height: 400px;
+      border-radius: 50%;
+      background: rgba(181,106,86,0.12);
+    }
+    .cover::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; left: -80px;
+      width: 300px; height: 300px;
+      border-radius: 50%;
+      background: rgba(139,168,136,0.1);
+    }
+    .cover-inner { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; }
+    .cover-label {
+      font-family: 'Manrope', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 16px;
+    }
+    .cover h1 {
+      font-family: 'Noto Serif', serif;
+      font-size: 52px;
+      font-weight: 400;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+    .cover h1 span { color: var(--primary); font-style: italic; }
+    .cover-sub {
+      font-size: 18px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 40px;
+    }
+    .cover-meta {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+    .cover-meta-item { text-align: center; }
+    .cover-meta-item .val {
+      font-family: 'Noto Serif', serif;
+      font-size: 20px;
+      color: white;
+      display: block;
+    }
+    .cover-meta-item .key {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+    }
+    .cover-divider {
+      width: 60px; height: 1px;
+      background: rgba(255,255,255,0.2);
+      margin: 32px auto;
+    }
+
+    /* ── TOC ── */
+    .toc { background: white; border: 1px solid var(--outline); border-radius: 20px; padding: 36px; margin: 40px 40px; }
+    .toc h2 { font-family: 'Noto Serif', serif; font-size: 20px; margin-bottom: 20px; }
+    .toc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 32px; }
+    .toc-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--outline); }
+    .toc-num { font-size: 10px; font-weight: 700; color: var(--primary); width: 20px; flex-shrink: 0; }
+    .toc-text { font-size: 13px; color: var(--muted); }
+
+    /* ── SECTION HEADER ── */
+    .section-header {
+      padding: 60px 40px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .section-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .badge-admin { background: rgba(181,106,86,0.12); color: var(--admin-color); }
+    .badge-user  { background: rgba(139,168,136,0.15); color: var(--user-color); }
+    .badge-common { background: var(--cream-mid); color: var(--muted); }
+    .section-header h2 {
+      font-family: 'Noto Serif', serif;
+      font-size: 30px;
+      font-weight: 400;
+    }
+
+    /* ── CONTENT ── */
+    .content { padding: 0 40px; }
+    .intro-box {
+      background: var(--cream-low);
+      border-left: 3px solid var(--primary);
+      border-radius: 0 12px 12px 0;
+      padding: 16px 20px;
+      margin-bottom: 32px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    /* ── PANEL CARD ── */
+    .panel-card {
+      background: white;
+      border: 1px solid var(--outline);
+      border-radius: 20px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid var(--outline);
+      background: var(--cream-low);
+    }
+    .panel-icon {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .icon-admin { background: rgba(181,106,86,0.12); }
+    .icon-user  { background: rgba(139,168,136,0.15); }
+    .icon-neutral { background: var(--cream-mid); }
+    .panel-title { font-family: 'Noto Serif', serif; font-size: 18px; font-weight: 400; }
+    .panel-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .panel-body { padding: 20px 24px; }
+
+    /* ── FEATURE LIST ── */
+    .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px;
+      background: var(--cream-low);
+      border-radius: 12px;
+    }
+    .feature-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+    .dot-admin { background: var(--admin-color); }
+    .dot-user  { background: var(--user-color); }
+    .dot-neutral { background: var(--muted); }
+    .feature-text strong { display: block; font-size: 13px; color: var(--dark); margin-bottom: 2px; }
+    .feature-text span { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+    /* ── DB TABLE ── */
+    .db-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+    .db-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--cream-mid);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .db-table th:first-child { border-radius: 8px 0 0 8px; }
+    .db-table th:last-child  { border-radius: 0 8px 8px 0; }
+    .db-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--outline);
+      vertical-align: top;
+    }
+    .db-table tr:last-child td { border-bottom: none; }
+    .db-table td:first-child { font-family: monospace; font-size: 11px; color: var(--primary); font-weight: 600; }
+    .type-badge {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--cream-mid);
+      color: var(--muted);
+    }
+    .pk-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(181,106,86,0.12);
+      color: var(--admin-color);
+      margin-left: 4px;
+    }
+
+    /* ── FLOW ── */
+    .flow { display: flex; align-items: stretch; gap: 0; margin: 16px 0; overflow-x: auto; }
+    .flow-step {
+      flex: 1;
+      min-width: 120px;
+      text-align: center;
+      padding: 14px 10px;
+      background: var(--cream-low);
+      border: 1px solid var(--outline);
+      border-right: none;
+      position: relative;
+    }
+    .flow-step:first-child { border-radius: 12px 0 0 12px; }
+    .flow-step:last-child  { border-radius: 0 12px 12px 0; border-right: 1px solid var(--outline); }
+    .flow-step::after {
+      content: '→';
+      position: absolute;
+      right: -10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--primary);
+      font-weight: 700;
+      z-index: 1;
+      background: var(--cream);
+      padding: 0 2px;
+      font-size: 13px;
+    }
+    .flow-step:last-child::after { display: none; }
+    .flow-num {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.1em;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .flow-label { font-size: 11px; font-weight: 600; color: var(--dark); }
+    .flow-sub   { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    /* ── ROLE TABLE ── */
+    .role-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .role-table th {
+      padding: 10px 14px;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      text-align: left;
+    }
+    .role-table td { padding: 10px 14px; border-top: 1px solid var(--outline); vertical-align: top; }
+    .role-table .col-feature { color: var(--dark); font-weight: 600; }
+    .role-table .col-admin { color: var(--admin-color); }
+    .role-table .col-user  { color: var(--user-color); }
+    .check { color: #4caf50; font-size: 14px; }
+    .cross { color: #e57373; font-size: 14px; }
+
+    /* ── STATUS CHIP ── */
+    .chip {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .chip-green  { background: rgba(139,168,136,0.15); color: var(--user-color); }
+    .chip-red    { background: rgba(229,115,115,0.1); color: #e57373; }
+    .chip-orange { background: rgba(240,165,0,0.1); color: #f0a500; }
+    .chip-blue   { background: rgba(100,149,237,0.1); color: #6495ed; }
+
+    /* ── API TABLE ── */
+    .api-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .api-table th {
+      padding: 8px 12px; text-align: left;
+      background: var(--cream-mid); font-size: 10px;
+      font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted);
+    }
+    .api-table td { padding: 9px 12px; border-bottom: 1px solid var(--outline); }
+    .api-table tr:last-child td { border-bottom: none; }
+    .method {
+      font-family: monospace; font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 4px;
+    }
+    .method-get    { background: rgba(100,149,237,0.1); color: #6495ed; }
+    .method-post   { background: rgba(139,168,136,0.15); color: var(--user-color); }
+    .method-patch  { background: rgba(240,165,0,0.1); color: #f0a500; }
+    .method-delete { background: rgba(229,115,115,0.1); color: #e57373; }
+    .endpoint { font-family: monospace; font-size: 11px; color: var(--dark); }
+
+    /* ── DIVIDER ── */
+    .divider { border: none; border-top: 1px solid var(--outline); margin: 40px 40px 0; }
+
+    /* ── PRINT BUTTON ── */
+    .print-bar {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      z-index: 999;
+    }
+    .print-btn {
+      background: var(--dark);
+      color: white;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 50px;
+      font-family: 'Manrope', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      display: flex; align-items: center; gap-10px;
+      gap: 8px;
+    }
+    .print-btn:hover { background: var(--primary); }
+
+    /* ── FOOTER ── */
+    .footer {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+      font-size: 11px;
+      border-top: 1px solid var(--outline);
+      margin-top: 60px;
+    }
+    .footer strong { color: var(--dark); }
+
+    /* ── STACK BOX ── */
+    .stack-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .stack-item {
+      padding: 14px;
+      background: var(--cream-low);
+      border: 1px solid var(--outline);
+      border-radius: 12px;
+    }
+    .stack-item .tech { font-weight: 700; font-size: 13px; color: var(--dark); }
+    .stack-item .role-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── ALERT ── */
+    .alert {
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      margin: 16px 0;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .alert-info { background: rgba(100,149,237,0.07); border-left: 3px solid #6495ed; color: var(--dark); }
+    .alert-warn { background: rgba(240,165,0,0.07); border-left: 3px solid #f0a500; color: var(--dark); }
+    .alert-success { background: rgba(139,168,136,0.1); border-left: 3px solid var(--sage); color: var(--dark); }
+    .alert-icon { font-size: 16px; flex-shrink: 0; }
+
+    h3 { font-family: 'Noto Serif', serif; font-size: 16px; font-weight: 400; margin: 24px 0 12px; }
+    p { margin-bottom: 12px; color: var(--muted); }
+    ul { padding-left: 18px; color: var(--muted); margin-bottom: 12px; }
+    ul li { margin-bottom: 4px; }
+    code { font-family: monospace; font-size: 11px; background: var(--cream-mid); padding: 1px 5px; border-radius: 4px; color: var(--primary); }
+  </style>
+</head>
+<body>
+
+<!-- PRINT BUTTON -->
+<div class="print-bar no-print">
+  <button class="print-btn" onclick="window.print()">
+    ⬇ Salva come PDF
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     COVER
+════════════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-inner">
+    <p class="cover-label">Design Document · Versione 1.0 · Maggio 2026</p>
+    <h1>Arcadia <span>Lab.</span></h1>
+    <p class="cover-sub">Documentazione tecnica — Area Personale & Dashboard</p>
+    <div class="cover-divider"></div>
+    <div class="cover-meta">
+      <div class="cover-meta-item">
+        <span class="val">2</span>
+        <span class="key">Tipologie utente</span>
+      </div>
+      <div class="cover-meta-item">
+        <span class="val">9</span>
+        <span class="key">Sezioni dashboard</span>
+      </div>
+      <div class="cover-meta-item">
+        <span class="val">5</span>
+        <span class="key">Tabelle database</span>
+      </div>
+      <div class="cover-meta-item">
+        <span class="val">React + Supabase</span>
+        <span class="key">Stack tecnologico</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     INDICE
+════════════════════════════════════════════════════ -->
+<div class="container">
+  <div class="toc">
+    <h2>Indice dei contenuti</h2>
+    <div class="toc-grid">
+      <div class="toc-item"><span class="toc-num">01</span><span class="toc-text">Panoramica del sistema</span></div>
+      <div class="toc-item"><span class="toc-num">02</span><span class="toc-text">Stack tecnologico</span></div>
+      <div class="toc-item"><span class="toc-num">03</span><span class="toc-text">Sistema di autenticazione</span></div>
+      <div class="toc-item"><span class="toc-num">04</span><span class="toc-text">Struttura database (Supabase)</span></div>
+      <div class="toc-item"><span class="toc-num">05</span><span class="toc-text">Dashboard Admin — Panoramica</span></div>
+      <div class="toc-item"><span class="toc-num">06</span><span class="toc-text">Dashboard Admin — Analytics sito</span></div>
+      <div class="toc-item"><span class="toc-num">07</span><span class="toc-text">Dashboard Admin — Abbonamenti</span></div>
+      <div class="toc-item"><span class="toc-num">08</span><span class="toc-text">Dashboard Admin — Utenti</span></div>
+      <div class="toc-item"><span class="toc-num">09</span><span class="toc-text">Dashboard Utente — Il mio spazio</span></div>
+      <div class="toc-item"><span class="toc-num">10</span><span class="toc-text">Dashboard Utente — Le mie lezioni</span></div>
+      <div class="toc-item"><span class="toc-num">11</span><span class="toc-text">Dashboard Utente — Abbonamento</span></div>
+      <div class="toc-item"><span class="toc-num">12</span><span class="toc-text">Dashboard Utente — Prenotazioni</span></div>
+      <div class="toc-item"><span class="toc-num">13</span><span class="toc-text">Impostazioni account (tutti)</span></div>
+      <div class="toc-item"><span class="toc-num">14</span><span class="toc-text">Matrice permessi</span></div>
+      <div class="toc-item"><span class="toc-num">15</span><span class="toc-text">Flusso navigazione & API</span></div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     01 — PANORAMICA
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-common">01</span>
+  <h2>Panoramica del sistema</h2>
+</div>
+<div class="content">
+  <div class="intro-box">
+    L'area personale di <strong>Arcadia Lab.</strong> è suddivisa in due macro-aree distinte: il <strong>Pannello Admin</strong> (riservato alla titolare dello studio) e l'<strong>Area Personale Utente</strong> (riservata agli iscritti). L'accesso è protetto da autenticazione Supabase con separazione dei ruoli basata sull'email.
+  </div>
+
+  <div class="panel-card">
+    <div class="panel-header">
+      <div class="panel-icon icon-admin">🏛️</div>
+      <div>
+        <div class="panel-title">Pannello Admin</div>
+        <div class="panel-desc">Accesso riservato alle email autorizzate: arcadialabyoga@gmail.com, ai.danielcorso@gmail.com</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Panoramica KPI</strong><span>Abbonati, ricavi, lezioni, tasso rinnovo con delta mensile</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Analytics sito</strong><span>Visite, utenti unici, sorgenti di traffico, dispositivi</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Gestione abbonamenti</strong><span>Tabella abbonamenti con stati, filtri e ricerca</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Gestione utenti</strong><span>Lista iscritti, piani attivi e date di registrazione</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Impostazioni studio</strong><span>Profilo, bio, sicurezza, notifiche e GDPR</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Attività recente</strong><span>Feed real-time di rinnovi, acquisti, scadenze</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-card">
+    <div class="panel-header">
+      <div class="panel-icon icon-user">🧘</div>
+      <div>
+        <div class="panel-title">Area Personale Utente</div>
+        <div class="panel-desc">Accessibile a tutti gli iscritti registrati tramite email e password</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-dot dot-user"></div>
+          <div class="feature-text"><strong>Il mio spazio</strong><span>Panoramica lezioni, scadenza abbonamento e prossime sessioni</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-user"></div>
+          <div class="feature-text"><strong>Le mie lezioni</strong><span>Storico presenze con stato presente/assente e statistiche</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-user"></div>
+          <div class="feature-text"><strong>Abbonamento</strong><span>Piano attivo, utilizzo, scadenza e cambio piano</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-user"></div>
+          <div class="feature-text"><strong>Prenotazioni</strong><span>Prossime lezioni prenotate con opzione disdetta</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-user"></div>
+          <div class="feature-text"><strong>Impostazioni</strong><span>Dati personali, password, notifiche e privacy GDPR</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     02 — STACK
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-common">02</span>
+  <h2>Stack tecnologico</h2>
+</div>
+<div class="content">
+  <div class="stack-grid">
+    <div class="stack-item"><div class="tech">React 19</div><div class="role-desc">UI framework — componenti e routing</div></div>
+    <div class="stack-item"><div class="tech">TypeScript 5.8</div><div class="role-desc">Tipizzazione statica e sicurezza del codice</div></div>
+    <div class="stack-item"><div class="tech">Vite 6</div><div class="role-desc">Build tool e dev server locale</div></div>
+    <div class="stack-item"><div class="tech">Tailwind CSS 4</div><div class="role-desc">Stile utility-first con design system personalizzato</div></div>
+    <div class="stack-item"><div class="tech">Framer Motion</div><div class="role-desc">Animazioni UI fluide e transizioni di pagina</div></div>
+    <div class="stack-item"><div class="tech">React Router 7</div><div class="role-desc">Routing SPA con route protette</div></div>
+    <div class="stack-item"><div class="tech">Supabase Auth</div><div class="role-desc">Autenticazione email/password + gestione sessioni</div></div>
+    <div class="stack-item"><div class="tech">Supabase DB</div><div class="role-desc">PostgreSQL gestito — tabelle utenti e abbonamenti</div></div>
+    <div class="stack-item"><div class="tech">Recharts</div><div class="role-desc">Grafici interattivi (area, barre, donut, radial)</div></div>
+    <div class="stack-item"><div class="tech">Lucide React</div><div class="role-desc">Libreria icone SVG</div></div>
+    <div class="stack-item"><div class="tech">Vercel</div><div class="role-desc">Deployment e hosting production</div></div>
+    <div class="stack-item"><div class="tech">Supabase Storage</div><div class="role-desc">Hosting immagini (logo, foto sito)</div></div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     03 — AUTENTICAZIONE
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-common">03</span>
+  <h2>Sistema di autenticazione</h2>
+</div>
+<div class="content">
+  <div class="intro-box">
+    L'autenticazione è gestita interamente da <strong>Supabase Auth</strong>. La pagina <code>/auth</code> espone tre modalità: Login, Registrazione e Recupero password. Il contesto <code>AuthContext</code> rende la sessione disponibile a tutta l'applicazione.
+  </div>
+
+  <h3>Flusso di autenticazione</h3>
+  <div class="flow">
+    <div class="flow-step"><span class="flow-num">01</span><span class="flow-label">Visita /auth</span><span class="flow-sub">Pagina pubblica</span></div>
+    <div class="flow-step"><span class="flow-num">02</span><span class="flow-label">Login / Registrazione</span><span class="flow-sub">Email + Password</span></div>
+    <div class="flow-step"><span class="flow-num">03</span><span class="flow-label">Supabase Auth</span><span class="flow-sub">Verifica credenziali</span></div>
+    <div class="flow-step"><span class="flow-num">04</span><span class="flow-label">Sessione JWT</span><span class="flow-sub">Token salvato in cookie</span></div>
+    <div class="flow-step"><span class="flow-num">05</span><span class="flow-label">Redirect /dashboard</span><span class="flow-sub">Ruolo rilevato dall'email</span></div>
+  </div>
+
+  <div class="panel-card">
+    <div class="panel-header">
+      <div class="panel-icon icon-neutral">🔐</div>
+      <div><div class="panel-title">Pagina /auth — tre modalità</div></div>
+    </div>
+    <div class="panel-body">
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-dot dot-neutral"></div>
+          <div class="feature-text"><strong>Login</strong><span>Email + password. Errori tradotti in italiano. Reindirizza a /dashboard al successo.</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-neutral"></div>
+          <div class="feature-text"><strong>Registrazione</strong><span>Email + password + conferma. Validazione lunghezza minima 6 caratteri. Email di conferma automatica da Supabase.</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-neutral"></div>
+          <div class="feature-text"><strong>Recupero password</strong><span>Inserisci email → ricezione link di reset → nuova password. Link scade dopo 24h.</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-neutral"></div>
+          <div class="feature-text"><strong>ProtectedRoute</strong><span>HOC che verifica la sessione. Se non loggato, redirect automatico a /auth.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-warn">
+    <span class="alert-icon">⚠️</span>
+    <div>Il sistema dei ruoli (admin vs utente) è attualmente basato su una <strong>whitelist di email</strong> hardcoded nel frontend. Per produzione si consiglia di spostare il controllo del ruolo su <strong>Supabase Row Level Security (RLS)</strong> o nella tabella <code>profiles</code>.</div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     04 — DATABASE
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-common">04</span>
+  <h2>Struttura database (Supabase)</h2>
+</div>
+<div class="content">
+  <div class="intro-box">
+    Schema PostgreSQL consigliato per gestire utenti, abbonamenti, lezioni e prenotazioni. Da creare nel pannello Supabase → SQL Editor.
+  </div>
+
+  <h3>Tabella: <code>profiles</code></h3>
+  <div class="panel-card">
+    <div class="panel-body">
+      <table class="db-table">
+        <thead>
+          <tr><th>Campo</th><th>Tipo</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>id <span class="pk-badge">PK</span></td><td><span class="type-badge">uuid</span></td><td>Riferimento a auth.users</td></tr>
+          <tr><td>nome</td><td><span class="type-badge">text</span></td><td>Nome dell'utente</td></tr>
+          <tr><td>cognome</td><td><span class="type-badge">text</span></td><td>Cognome dell'utente</td></tr>
+          <tr><td>telefono</td><td><span class="type-badge">text</span></td><td>Numero di telefono (opzionale)</td></tr>
+          <tr><td>role</td><td><span class="type-badge">text</span></td><td>Valori: <code>admin</code> | <code>user</code> — default: <code>user</code></td></tr>
+          <tr><td>avatar_url</td><td><span class="type-badge">text</span></td><td>URL immagine profilo (opzionale)</td></tr>
+          <tr><td>notifiche_email</td><td><span class="type-badge">jsonb</span></td><td>Preferenze notifiche: <code>{lezioni, scadenza, promo}</code></td></tr>
+          <tr><td>created_at</td><td><span class="type-badge">timestamptz</span></td><td>Data creazione — default: now()</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>Tabella: <code>subscriptions</code></h3>
+  <div class="panel-card">
+    <div class="panel-body">
+      <table class="db-table">
+        <thead>
+          <tr><th>Campo</th><th>Tipo</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>id <span class="pk-badge">PK</span></td><td><span class="type-badge">uuid</span></td><td>Generato automaticamente</td></tr>
+          <tr><td>user_id</td><td><span class="type-badge">uuid</span></td><td>FK → profiles.id</td></tr>
+          <tr><td>piano</td><td><span class="type-badge">text</span></td><td>Valori: <code>mensile</code> | <code>trimestrale</code> | <code>annuale</code> | <code>singola</code></td></tr>
+          <tr><td>lezioni_totali</td><td><span class="type-badge">integer</span></td><td>Es: 12 per mensile, 36 per trimestrale</td></tr>
+          <tr><td>lezioni_usate</td><td><span class="type-badge">integer</span></td><td>Incrementato a ogni presenza registrata</td></tr>
+          <tr><td>data_inizio</td><td><span class="type-badge">date</span></td><td>Data di attivazione abbonamento</td></tr>
+          <tr><td>data_scadenza</td><td><span class="type-badge">date</span></td><td>Data di scadenza abbonamento</td></tr>
+          <tr><td>stato</td><td><span class="type-badge">text</span></td><td>Valori: <code>attivo</code> | <code>scaduto</code> | <code>sospeso</code></td></tr>
+          <tr><td>prezzo_pagato</td><td><span class="type-badge">numeric</span></td><td>Importo in euro al momento dell'acquisto</td></tr>
+          <tr><td>created_at</td><td><span class="type-badge">timestamptz</span></td><td>Data creazione record</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>Tabella: <code>lessons</code></h3>
+  <div class="panel-card">
+    <div class="panel-body">
+      <table class="db-table">
+        <thead>
+          <tr><th>Campo</th><th>Tipo</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>id <span class="pk-badge">PK</span></td><td><span class="type-badge">uuid</span></td><td>Generato automaticamente</td></tr>
+          <tr><td>titolo</td><td><span class="type-badge">text</span></td><td>Es: "Hatha Yoga", "Vinyasa Flow"</td></tr>
+          <tr><td>data_ora</td><td><span class="type-badge">timestamptz</span></td><td>Data e ora della lezione</td></tr>
+          <tr><td>durata_min</td><td><span class="type-badge">integer</span></td><td>Durata in minuti (es: 60, 90)</td></tr>
+          <tr><td>posti_totali</td><td><span class="type-badge">integer</span></td><td>Numero massimo di partecipanti</td></tr>
+          <tr><td>posti_disponibili</td><td><span class="type-badge">integer</span></td><td>Aggiornato a ogni prenotazione/disdetta</td></tr>
+          <tr><td>is_attiva</td><td><span class="type-badge">boolean</span></td><td>false se cancellata dall'admin</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>Tabella: <code>bookings</code></h3>
+  <div class="panel-card">
+    <div class="panel-body">
+      <table class="db-table">
+        <thead>
+          <tr><th>Campo</th><th>Tipo</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>id <span class="pk-badge">PK</span></td><td><span class="type-badge">uuid</span></td><td>Generato automaticamente</td></tr>
+          <tr><td>user_id</td><td><span class="type-badge">uuid</span></td><td>FK → profiles.id</td></tr>
+          <tr><td>lesson_id</td><td><span class="type-badge">uuid</span></td><td>FK → lessons.id</td></tr>
+          <tr><td>subscription_id</td><td><span class="type-badge">uuid</span></td><td>FK → subscriptions.id (abbonamento usato)</td></tr>
+          <tr><td>stato</td><td><span class="type-badge">text</span></td><td>Valori: <code>confermata</code> | <code>in-attesa</code> | <code>cancellata</code></td></tr>
+          <tr><td>presenza</td><td><span class="type-badge">boolean</span></td><td>Segnata dall'admin dopo la lezione</td></tr>
+          <tr><td>created_at</td><td><span class="type-badge">timestamptz</span></td><td>Data prenotazione</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="alert alert-success">
+    <span class="alert-icon">✅</span>
+    <div>Tutte le tabelle devono avere <strong>Row Level Security (RLS)</strong> abilitata. Gli utenti possono leggere solo i propri dati (<code>user_id = auth.uid()</code>). L'admin può leggere tutto tramite una policy separata basata sul ruolo.</div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     05 — ADMIN: PANORAMICA
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-admin">05 — Admin</span>
+  <h2>Panoramica KPI</h2>
+</div>
+<div class="content">
+  <div class="panel-card">
+    <div class="panel-header">
+      <div class="panel-icon icon-admin">📊</div>
+      <div><div class="panel-title">Sezione: Panoramica</div><div class="panel-desc">Prima schermata visibile all'accesso admin</div></div>
+    </div>
+    <div class="panel-body">
+      <h3>Metriche KPI (4 card)</h3>
+      <table class="db-table">
+        <thead><tr><th>KPI</th><th>Dato mostrato</th><th>Delta</th><th>Fonte dati</th></tr></thead>
+        <tbody>
+          <tr><td>Abbonati attivi</td><td>Conteggio abbonamenti stato=attivo</td><td>% vs mese precedente</td><td>subscriptions</td></tr>
+          <tr><td>Ricavi mensili</td><td>Somma prezzo_pagato del mese corrente</td><td>% vs mese precedente</td><td>subscriptions</td></tr>
+          <tr><td>Lezioni questo mese</td><td>Conteggio lezioni del mese corrente</td><td>Numero assoluto</td><td>lessons</td></tr>
+          <tr><td>Tasso di rinnovo</td><td>% utenti che hanno rinnovato</td><td>% vs mese precedente</td><td>subscriptions</td></tr>
+        </tbody>
+      </table>
+      <h3>Grafici inclusi</h3>
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Area chart — Ricavi annuali</strong><span>12 mesi con gradiente. Tooltip con valore in euro. Totale anno in evidenza.</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Bar chart — Presenze settimanali</strong><span>Presenze per giorno della settimana. Barra del giorno con più presenze in evidenza.</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Donut chart — Piani abbonamento</strong><span>Distribuzione percentuale tra mensile, trimestrale, annuale e singola.</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Feed — Attività recente</strong><span>Ultimi eventi: rinnovi, nuovi acquisti, scadenze. Con timestamp relativo.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     06 — ADMIN: ANALYTICS
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-admin">06 — Admin</span>
+  <h2>Analytics sito</h2>
+</div>
+<div class="content">
+  <div class="panel-card">
+    <div class="panel-header">
+      <div class="panel-icon icon-admin">📈</div>
+      <div><div class="panel-title">Sezione: Analytics sito</div><div class="panel-desc">Statistiche di traffico e comportamento dei visitatori</div></div>
+    </div>
+    <div class="panel-body">
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Visite totali mensili</strong><span>Con delta percentuale vs mese precedente</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Utenti unici</strong><span>Visitatori distinti nel mese corrente</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Tasso di conversione</strong><span>Visitatori che compilano il form di contatto</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Tempo medio sul sito</strong><span>Durata media della sessione in min:sec</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Grafico visite mensili</strong><span>Area chart anno corrente — andamento del traffico</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Visite per giorno</strong><span>Bar chart settimana: visite totali vs utenti unici</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Dispositivi</strong><span>Donut: Mobile (62%), Desktop (31%), Tablet (7%)</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Pagine più visitate</strong><span>Top 5 con barre proporzionali e bounce rate</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Sorgenti di traffico</strong><span>Instagram, Google, Diretto, Referral con barre proporzionali</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-admin"></div>
+          <div class="feature-text"><strong>Suggerimento automatico</strong><span>Insight testuale basato sulla sorgente principale</span></div>
+        </div>
+      </div>
+      <div class="alert alert-info" style="margin-top:16px">
+        <span class="alert-icon">ℹ️</span>
+        <div>Attualmente i dati sono di esempio. Per dati reali si consiglia di integrare <strong>Google Analytics 4</strong> (via gtag) oppure <strong>Plausible Analytics</strong> (privacy-friendly, GDPR compliant senza cookie banner).</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     07 — ADMIN: ABBONAMENTI
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-admin">07 — Admin</span>
+  <h2>Gestione abbonamenti</h2>
+</div>
+<div class="content">
+  <div class="panel-card">
+    <div class="panel-header">
+      <div class="panel-icon icon-admin">💳</div>
+      <div><div class="panel-title">Sezione: Abbonamenti</div><div class="panel-desc">Tabella con tutti gli abbonamenti e strumenti di gestione</div></div>
+    </div>
+    <div class="panel-body">
+      <h3>Cards di stato rapido</h3>
+      <p>Tre contatori in evidenza: <span class="chip chip-green">Attivi</span> <span class="chip chip-orange">In scadenza</span> <span class="chip chip-red">Scaduti</span></p>
+
+      <h3>Filtri disponibili</h3>
+      <ul>
+        <li>Ricerca libera per nome o email utente</li>
+        <li>Filtro per stato: Tutti / Attivi / In scadenza / Scaduti</li>
+      </ul>
+
+      <h3>Colonne della tabella</h3>
+      <table class="db-table">
+        <thead><tr><th>Colonna</th><th>Contenuto</th></tr></thead>
+        <tbody>
+          <tr><td>Utente</td><td>Avatar iniziale + nome completo + email</td></tr>
+          <tr><td>Piano</td><td>Mensile / Trimestrale / Annuale / Singola</td></tr>
+          <tr><td>Lezioni</td><td>Barra di utilizzo + contatore X/Y</td></tr>
+          <tr><td>Scadenza</td><td>Data formattata in italiano</td></tr>
+          <tr><td>Stato</td><td>Chip colorato: <span class="chip chip-green">Attivo</span> <span class="chip chip-orange">In scadenza</span> <span class="chip chip-red">Scaduto</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="alert alert-info" style="margin-top:16px">
+        <span class="alert-icon">ℹ️</span>
+        <div>Funzionalità future da implementare: <strong>modifica abbonamento</strong>, <strong>rinnovo manuale</strong>, <strong>invio email di promemoria</strong>, <strong>export CSV</strong>.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     08 — ADMIN: UTENTI
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-admin">08 — Admin</span>
+  <h2>Gestione utenti</h2>
+</div>
+<div class="content">
+  <div class="panel-card">
+    <div class="panel-header">
+      <div class="panel-icon icon-admin">👥</div>
+      <div><div class="panel-title">Sezione: Utenti registrati</div><div class="panel-desc">Tutti gli account iscritti alla piattaforma</div></div>
+    </div>
+    <div class="panel-body">
+      <h3>Colonne della tabella</h3>
+      <table class="db-table">
+        <thead><tr><th>Colonna</th><th>Contenuto</th></tr></thead>
+        <tbody>
+          <tr><td>Utente</td><td>Avatar iniziale + nome + email</td></tr>
+          <tr><td>Iscrizione</td><td>Data di registrazione formattata</td></tr>
+          <tr><td>Piano</td><td>Piano abbonamento corrente</td></tr>
+          <tr><td>Stato</td><td><span class="chip chip-green">Attivo</span> <span class="chip chip-red">Scaduto</span></td></tr>
+        </tbody>
+      </table>
+      <div class="alert alert-info" style="margin-top:16px">
+        <span class="alert-icon">ℹ️</span>
+        <div>Funzionalità future: <strong>assegnazione manuale ruolo admin</strong>, <strong>sospensione account</strong>, <strong>invio email diretto</strong>, <strong>visualizzazione profilo completo</strong>.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     09 — UTENTE: IL MIO SPAZIO
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-user">09 — Utente</span>
+  <h2>Il mio spazio</h2>
+</div>
+<div class="content">
+  <div class="panel-card">
+    <div class="panel-header">
+      <div class="panel-icon icon-user">🏠</div>
+      <div><div class="panel-title">Sezione: Panoramica personale</div><div class="panel-desc">Prima schermata visibile all'accesso utente</div></div>
+    </div>
+    <div class="panel-body">
+      <h3>Card di benvenuto</h3>
+      <p>Avatar con iniziale email + email completa + badge piano attivo con colore terracotta.</p>
+      <h3>KPI personali (4 card)</h3>
+      <table class="db-table">
+        <thead><tr><th>KPI</th><th>Dato</th><th>Fonte</th></tr></thead>
+        <tbody>
+          <tr><td>Lezioni rimaste</td><td>X/Y con percentuale disponibile</td><td>subscriptions.lezioni_usate</td></tr>
+          <tr><td>Giorni alla scadenza</td><td>Numero giorni + data scadenza</td><td>subscriptions.data_scadenza</td></tr>
+          <tr><td>Presenze questo mese</td><td>Conteggio presenze=true del mese</td><td>bookings.presenza</td></tr>
+          <tr><td>Lezioni totali fatte</td><td>Storico completo presenze</td><td>bookings.presenza</td></tr>
+        </tbody>
+      </table>
+      <h3>Grafici</h3>
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-dot dot-user"></div>
+          <div class="feature-text"><strong>Donut utilizzo abbonamento</strong><span>Lezioni usate vs rimaste con percentuale centrale e barre lineari di dettaglio</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-user"></div>
+          <div class="feature-text"><strong>Area chart presenze mensili</strong><span>Presenze per settimana del mese corrente con gradiente sage green</span></div>
+        </div>
+      </div>
+      <h3>Prossime lezioni</h3>
+      <p>Lista delle prossime 3 lezioni con: titolo, giorno, ora e posti liberi (rosso se ≤ 2 posti).</p>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     10 — UTENTE: LE MIE LEZIONI
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-user">10 — Utente</span>
+  <h2>Le mie lezioni</h2>
+</div>
+<div class="content">
+  <div class="panel-card">
+    <div class="panel-header">
+      <div class="panel-icon icon-user">📅</div>
+      <div><div class="panel-title">Sezione: Storico e prossimi appuntamenti</div></div>
+    </div>
+    <div class="panel-body">
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-dot dot-user"></div>
+          <div class="feature-text"><strong>3 card statistiche</strong><span>Totale presenze, totale assenze, percentuale di presenza</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-user"></div>
+          <div class="feature-text"><strong>Calendario prossime lezioni</strong><span>Card con icona, tipo lezione, data per esteso, ora e posti liberi</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-user"></div>
+          <div class="feature-text"><strong>Storico presenze</strong><span>Lista cronologica con icona ✓ (presente) o ✗ (assente) e chip colorato</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     11 — UTENTE: ABBONAMENTO
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-user">11 — Utente</span>
+  <h2>Il mio abbonamento</h2>
+</div>
+<div class="content">
+  <div class="panel-card">
+    <div class="panel-header">
+      <div class="panel-icon icon-user">⭐</div>
+      <div><div class="panel-title">Sezione: Piano attivo e upgrade</div></div>
+    </div>
+    <div class="panel-body">
+      <h3>Card piano attivo</h3>
+      <p>Sfondo gradiente terracotta/sage. Mostra: nome piano, badge stato, lezioni incluse/rimaste/giorni rimasti, barra di utilizzo, data scadenza.</p>
+      <h3>Sezione cambio piano</h3>
+      <table class="db-table">
+        <thead><tr><th>Piano</th><th>Prezzo</th><th>Lezioni incluse</th></tr></thead>
+        <tbody>
+          <tr><td>Piano Mensile</td><td>€ 80</td><td>12 lezioni</td></tr>
+          <tr><td>Piano Trimestrale</td><td>€ 210</td><td>36 lezioni (-12% vs mensile)</td></tr>
+          <tr><td>Piano Annuale</td><td>€ 720</td><td>144 lezioni (miglior valore)</td></tr>
+          <tr><td>Lezione singola</td><td>€ 15</td><td>1 lezione</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     12 — UTENTE: PRENOTAZIONI
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-user">12 — Utente</span>
+  <h2>Prenotazioni</h2>
+</div>
+<div class="content">
+  <div class="panel-card">
+    <div class="panel-header">
+      <div class="panel-icon icon-user">📖</div>
+      <div><div class="panel-title">Sezione: Prossime sessioni prenotate</div></div>
+    </div>
+    <div class="panel-body">
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-dot dot-user"></div>
+          <div class="feature-text"><strong>Lista prenotazioni</strong><span>Tipo lezione, data per esteso e ora, stato prenotazione</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-user"></div>
+          <div class="feature-text"><strong>Stati prenotazione</strong><span><span class="chip chip-green">Confermata</span> <span class="chip chip-orange">In attesa</span> <span class="chip chip-red">Cancellata</span></span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-user"></div>
+          <div class="feature-text"><strong>Azione: Disdici</strong><span>Link per cancellare la prenotazione (con conferma). Libera il posto nella lezione.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     13 — IMPOSTAZIONI (TUTTI)
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-common">13 — Tutti</span>
+  <h2>Impostazioni account</h2>
+</div>
+<div class="content">
+  <div class="intro-box">
+    La sezione impostazioni è condivisa tra admin e utenti. L'admin vede in aggiunta il campo <strong>Bio/Descrizione studio</strong>. Tutte le azioni di modifica chiamano direttamente <strong>Supabase Auth API</strong>.
+  </div>
+  <div class="panel-card">
+    <div class="panel-body">
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-dot dot-neutral"></div>
+          <div class="feature-text"><strong>Info account</strong><span>Email, data creazione account, badge ruolo (Admin/Utente)</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-neutral"></div>
+          <div class="feature-text"><strong>Dati personali</strong><span>Nome, cognome, telefono, bio (solo admin). Salva su Supabase user_metadata.</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-neutral"></div>
+          <div class="feature-text"><strong>Cambio password</strong><span>Nuova password + conferma. Validazione minimo 6 caratteri. Salva tramite supabase.auth.updateUser().</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-neutral"></div>
+          <div class="feature-text"><strong>Notifiche email</strong><span>Toggle per: promemoria lezioni, scadenza abbonamento, offerte e novità.</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-neutral"></div>
+          <div class="feature-text"><strong>Privacy & GDPR</strong><span>Esporta i tuoi dati (download JSON), gestisci consenso marketing.</span></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot dot-neutral"></div>
+          <div class="feature-text"><strong>Zona pericolosa</strong><span>Eliminazione account con conferma. Irreversibile. Triggera signOut() dopo eliminazione.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     14 — MATRICE PERMESSI
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-common">14</span>
+  <h2>Matrice permessi</h2>
+</div>
+<div class="content">
+  <div class="panel-card">
+    <div class="panel-body">
+      <table class="role-table">
+        <thead>
+          <tr>
+            <th style="width:40%">Funzionalità</th>
+            <th style="color:var(--admin-color)">👑 Admin</th>
+            <th style="color:var(--user-color)">👤 Utente</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="col-feature">Visualizza KPI studio (ricavi, abbonati)</td><td class="col-admin"><span class="check">✓</span></td><td class="col-user"><span class="cross">✗</span></td></tr>
+          <tr><td class="col-feature">Visualizza analytics sito</td><td class="col-admin"><span class="check">✓</span></td><td class="col-user"><span class="cross">✗</span></td></tr>
+          <tr><td class="col-feature">Gestisce abbonamenti di tutti gli utenti</td><td class="col-admin"><span class="check">✓</span></td><td class="col-user"><span class="cross">✗</span></td></tr>
+          <tr><td class="col-feature">Visualizza lista utenti registrati</td><td class="col-admin"><span class="check">✓</span></td><td class="col-user"><span class="cross">✗</span></td></tr>
+          <tr><td class="col-feature">Segnala presenza a una lezione</td><td class="col-admin"><span class="check">✓</span></td><td class="col-user"><span class="cross">✗</span></td></tr>
+          <tr><td class="col-feature">Visualizza il proprio abbonamento</td><td class="col-admin"><span class="check">✓</span></td><td class="col-user"><span class="check">✓</span></td></tr>
+          <tr><td class="col-feature">Visualizza le proprie lezioni</td><td class="col-admin"><span class="check">✓</span></td><td class="col-user"><span class="check">✓</span></td></tr>
+          <tr><td class="col-feature">Prenotare/disdire una lezione</td><td class="col-admin"><span class="check">✓</span></td><td class="col-user"><span class="check">✓</span></td></tr>
+          <tr><td class="col-feature">Modificare dati personali</td><td class="col-admin"><span class="check">✓</span></td><td class="col-user"><span class="check">✓</span></td></tr>
+          <tr><td class="col-feature">Cambiare password</td><td class="col-admin"><span class="check">✓</span></td><td class="col-user"><span class="check">✓</span></td></tr>
+          <tr><td class="col-feature">Gestire preferenze notifiche</td><td class="col-admin"><span class="check">✓</span></td><td class="col-user"><span class="check">✓</span></td></tr>
+          <tr><td class="col-feature">Esportare propri dati (GDPR)</td><td class="col-admin"><span class="check">✓</span></td><td class="col-user"><span class="check">✓</span></td></tr>
+          <tr><td class="col-feature">Eliminare il proprio account</td><td class="col-admin"><span class="check">✓</span></td><td class="col-user"><span class="check">✓</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════
+     15 — FLUSSO & API
+════════════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="section-badge badge-common">15</span>
+  <h2>Flusso navigazione & chiamate API</h2>
+</div>
+<div class="content">
+  <h3>Struttura route</h3>
+  <table class="db-table">
+    <thead><tr><th>Percorso</th><th>Componente</th><th>Accesso</th></tr></thead>
+    <tbody>
+      <tr><td>/</td><td>Home (landing page)</td><td>Pubblico</td></tr>
+      <tr><td>/auth</td><td>Auth (login / registrazione / recupero)</td><td>Solo non loggati</td></tr>
+      <tr><td>/dashboard</td><td>Dashboard (admin o utente)</td><td>Solo loggati (ProtectedRoute)</td></tr>
+      <tr><td>/privacy-policy</td><td>PrivacyPolicy</td><td>Pubblico</td></tr>
+      <tr><td>/terms-of-service</td><td>TermsOfService</td><td>Pubblico</td></tr>
+      <tr><td>/cookie-policy</td><td>CookiePolicy</td><td>Pubblico</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Chiamate Supabase Auth (implementate)</h3>
+  <div class="panel-card">
+    <div class="panel-body">
+      <table class="api-table">
+        <thead><tr><th>Metodo</th><th>Funzione Supabase</th><th>Quando</th></tr></thead>
+        <tbody>
+          <tr><td><span class="method method-post">POST</span></td><td class="endpoint">supabase.auth.signInWithPassword()</td><td>Login con email/password</td></tr>
+          <tr><td><span class="method method-post">POST</span></td><td class="endpoint">supabase.auth.signUp()</td><td>Registrazione nuovo utente</td></tr>
+          <tr><td><span class="method method-post">POST</span></td><td class="endpoint">supabase.auth.resetPasswordForEmail()</td><td>Recupero password</td></tr>
+          <tr><td><span class="method method-get">GET</span></td><td class="endpoint">supabase.auth.getSession()</td><td>Check sessione all'avvio app</td></tr>
+          <tr><td><span class="method method-get">GET</span></td><td class="endpoint">supabase.auth.onAuthStateChange()</td><td>Listener cambiamenti sessione</td></tr>
+          <tr><td><span class="method method-patch">PATCH</span></td><td class="endpoint">supabase.auth.updateUser()</td><td>Modifica password o user_metadata</td></tr>
+          <tr><td><span class="method method-post">POST</span></td><td class="endpoint">supabase.auth.signOut()</td><td>Logout</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>Chiamate Supabase DB (da implementare)</h3>
+  <div class="panel-card">
+    <div class="panel-body">
+      <table class="api-table">
+        <thead><tr><th>Operazione</th><th>Query</th><th>Chi</th></tr></thead>
+        <tbody>
+          <tr><td>Leggi abbonamento attivo</td><td class="endpoint">supabase.from('subscriptions').select().eq('user_id', uid).eq('stato','attivo')</td><td>Utente</td></tr>
+          <tr><td>Leggi storico presenze</td><td class="endpoint">supabase.from('bookings').select(*, lessons(*)).eq('user_id', uid)</td><td>Utente</td></tr>
+          <tr><td>Prenota lezione</td><td class="endpoint">supabase.from('bookings').insert({user_id, lesson_id, ...})</td><td>Utente</td></tr>
+          <tr><td>Disdici prenotazione</td><td class="endpoint">supabase.from('bookings').update({stato:'cancellata'}).eq('id', bid)</td><td>Utente</td></tr>
+          <tr><td>Tutti gli abbonamenti</td><td class="endpoint">supabase.from('subscriptions').select(*, profiles(*))</td><td>Admin</td></tr>
+          <tr><td>Tutti gli utenti</td><td class="endpoint">supabase.from('profiles').select(*)</td><td>Admin</td></tr>
+          <tr><td>Ricavi mensili</td><td class="endpoint">supabase.from('subscriptions').select('prezzo_pagato').gte('created_at', startOfMonth)</td><td>Admin</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="alert alert-success">
+    <span class="alert-icon">🚀</span>
+    <div>Per mettere online il sito: dalla root del progetto esegui <code>vercel deploy</code> oppure collega il repository GitHub a Vercel per il deploy automatico ad ogni push. Le variabili <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_ANON_KEY</code> devono essere aggiunte nelle <strong>Environment Variables</strong> del progetto Vercel.</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     FOOTER
+════════════════════════════════════════════════════ -->
+<div class="footer">
+  <p><strong>Arcadia Lab.</strong> — Design Document Area Personale</p>
+  <p>Versione 1.0 · Generato il 19 Maggio 2026 · Riservato e confidenziale</p>
+  <p style="margin-top:8px">Stack: React 19 · TypeScript · Vite · Tailwind CSS 4 · Supabase · Recharts · Vercel</p>
+</div>
+
+</body>
+</html>

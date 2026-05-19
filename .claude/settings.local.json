@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(mkdir -p /Users/danielmoise/Desktop/arcadia-lab./src/lib /Users/danielmoise/Desktop/arcadia-lab./src/context)"
+    ],
+    "additionalDirectories": [
+      "/Users/danielmoise/Desktop/arcadia-lab./src"
+    ]
+  }
+}
