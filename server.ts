@@ -1,16 +1,15 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { apiRouter } from "./api/routes";
+import authHandler from "./api/auth";
 
 export const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 
-// Mount the API router
-app.use("/api", apiRouter);
-app.use(apiRouter); // Fallback to handle different path styles
+// Proxy requests to the Vercel function style handler for local dev
+app.all("/api/auth", (req, res) => authHandler(req as any, res as any));
 
 // Fallback for API routes (prevent HTML response)
 app.use("/api", (req, res) => {

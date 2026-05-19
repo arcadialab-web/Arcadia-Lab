@@ -32,9 +32,9 @@ export default function Register() {
     setError(null);
 
     try {
-      console.log('Chiamata API registrazione:', '/api/auth/signup');
-      // Call our custom backend API
-      const response = await fetch('/api/auth/signup', {
+      console.log('Chiamata API registrazione:', '/api/auth?action=signup');
+      // Call our simplified backend API
+      const response = await fetch('/api/auth?action=signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
