@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   console.log(`[API Auth] Action: ${action} | Method: ${req.method}`);
 
-  if (req.method !== 'POST' && action !== 'health') {
+  if (req.method !== 'POST' && action !== 'health' && action !== 'diagnostics') {
     return res.status(405).json({ error: 'Metodo non consentito' });
   }
 
@@ -28,6 +28,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     switch (action) {
       case 'health':
         return res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+
+      case 'diagnostics':
+        return res.status(200).json({ 
+          status: 'checking_envs',
+          hasSupabaseUrl: !!supabaseUrl,
+          hasServiceRoleKey: !!serviceRoleKey,
+          hasResendKey: !!resendApiKey,
+          nodeEnv: process.env.NODE_ENV,
+          vercel: !!process.env.VERCEL
+        });
 
       case 'signup': {
         const { email, password, fullName } = req.body;

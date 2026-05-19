@@ -4,22 +4,32 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+// Logging strictly for debugging - REMOVE after testing if security is a concern
+// But required to see what is missing in Vercel Logs
+const checkEnv = (name: string, val: string | undefined) => {
+  if (!val) {
+    console.warn(`[DIAGNOSTIC] Missing environment variable: ${name}`);
+    return false;
+  }
+  console.log(`[DIAGNOSTIC] Found ${name} (${val.substring(0, 5)}...)`);
+  return true;
+};
+
 export const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 export const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || "";
-
-if (!supabaseUrl || !serviceRoleKey) {
-  console.error("CRITICAL: Missing Supabase URL or Service Role Key.");
-}
-
 export const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
+
+checkEnv("SUPABASE_URL", supabaseUrl);
+checkEnv("SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey);
+checkEnv("RESEND_API_KEY", resendApiKey);
 
 let supabaseAdminClient: any = null;
 export const getSupabaseAdmin = () => {
   if (!supabaseAdminClient) {
     if (!supabaseUrl || !serviceRoleKey) {
-      console.error("Missing Supabase configuration");
+      throw new Error(`Configurazione Supabase mancante. Controlla SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.`);
     }
-    supabaseAdminClient = createClient(supabaseUrl || "https://placeholder.supabase.co", serviceRoleKey || "placeholder");
+    supabaseAdminClient = createClient(supabaseUrl, serviceRoleKey);
   }
   return supabaseAdminClient;
 };
@@ -27,7 +37,10 @@ export const getSupabaseAdmin = () => {
 let resendClient: any = null;
 export const getResend = () => {
   if (!resendClient) {
-    resendClient = new Resend(resendApiKey || "missing_key");
+    if (!resendApiKey) {
+      throw new Error(`API Key di Resend mancante. Controlla RESEND_API_KEY.`);
+    }
+    resendClient = new Resend(resendApiKey);
   }
   return resendClient;
 };
