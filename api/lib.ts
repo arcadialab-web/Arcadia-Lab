@@ -11,13 +11,26 @@ if (!supabaseUrl || !serviceRoleKey) {
   console.error("CRITICAL: Missing Supabase URL or Service Role Key.");
 }
 
-export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
 export const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
-if (!resendApiKey) {
-  console.warn("WARNING: Missing RESEND_API_KEY in Vercel/Environment. Email features will fail.");
-}
-export const resend = new Resend(resendApiKey || "missing_key");
+
+let supabaseAdminClient: any = null;
+export const getSupabaseAdmin = () => {
+  if (!supabaseAdminClient) {
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("Missing Supabase configuration");
+    }
+    supabaseAdminClient = createClient(supabaseUrl || "https://placeholder.supabase.co", serviceRoleKey || "placeholder");
+  }
+  return supabaseAdminClient;
+};
+
+let resendClient: any = null;
+export const getResend = () => {
+  if (!resendClient) {
+    resendClient = new Resend(resendApiKey || "missing_key");
+  }
+  return resendClient;
+};
 
 export const getBaseUrl = (req: any) => {
   if (process.env.APP_URL) return process.env.APP_URL;

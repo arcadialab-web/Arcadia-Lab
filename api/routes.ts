@@ -1,5 +1,5 @@
 import express from "express";
-import { supabaseAdmin, resend, getBaseUrl, emailHeader, emailFooter, resendApiKey } from "./lib";
+import { getSupabaseAdmin, getResend, getBaseUrl, emailHeader, emailFooter, resendApiKey } from "./lib";
 
 const apiRouter = express.Router();
 
@@ -10,7 +10,7 @@ apiRouter.use((req, res, next) => {
 });
 
 apiRouter.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString(), vercel: !!process.env.VERCEL });
+  res.json({ status: "ok", timestamp: new Date().toISOString(), vercel: !!process.env.VITE_VERCEL || !!process.env.VERCEL });
 });
 
 // Custom Signup with Resend Confirmation Email
@@ -23,6 +23,8 @@ apiRouter.post("/auth/signup", async (req, res) => {
     }
 
     const appUrl = getBaseUrl(req);
+    const supabaseAdmin = getSupabaseAdmin();
+    const resend = getResend();
 
     // 1. Create user in Supabase
     const { data: userData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
@@ -102,6 +104,8 @@ apiRouter.post("/auth/recover", async (req, res) => {
     }
 
     const appUrl = getBaseUrl(req);
+    const supabaseAdmin = getSupabaseAdmin();
+    const resend = getResend();
 
     // Generate recovery link
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({

@@ -11,6 +11,10 @@ app.use((req, res, next) => {
 });
 
 // Mount the API router
+app.get("/api/test", (req, res) => {
+  res.json({ message: "Entry point API file is working", timestamp: new Date().toISOString() });
+});
+
 // Using both prefixes to ensure compatibility with Vercel rewrites
 app.use("/api", apiRouter);
 app.use("/", apiRouter);
