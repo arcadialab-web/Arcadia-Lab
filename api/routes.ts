@@ -1,5 +1,5 @@
 import express from "express";
-import { supabaseAdmin, resend, APP_URL, emailHeader, emailFooter } from "./lib";
+import { supabaseAdmin, resend, getBaseUrl, emailHeader, emailFooter, resendApiKey } from "./lib";
 
 const apiRouter = express.Router();
 
@@ -18,6 +18,12 @@ apiRouter.post("/auth/signup", async (req, res) => {
   const { email, password, fullName } = req.body;
 
   try {
+    if (!resendApiKey) {
+      throw new Error("Il server non è configurato correttamente per l'invio delle email (RESEND_API_KEY mancante). Contatta l'amministratore.");
+    }
+
+    const appUrl = getBaseUrl(req);
+
     // 1. Create user in Supabase
     const { data: userData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -50,7 +56,7 @@ apiRouter.post("/auth/signup", async (req, res) => {
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'signup',
       email: email,
-      options: { redirectTo: `${APP_URL}` }
+      options: { redirectTo: `${appUrl}` }
     });
 
     if (linkError) throw linkError;
@@ -91,11 +97,17 @@ apiRouter.post("/auth/recover", async (req, res) => {
   const { email } = req.body;
 
   try {
+    if (!resendApiKey) {
+      throw new Error("Il server non è configurato correttamente per l'invio delle email (RESEND_API_KEY mancante).");
+    }
+
+    const appUrl = getBaseUrl(req);
+
     // Generate recovery link
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
       email: email,
-      options: { redirectTo: `${APP_URL}/reset-password` }
+      options: { redirectTo: `${appUrl}/reset-password` }
     });
 
     if (linkError) throw linkError;

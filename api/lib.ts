@@ -13,13 +13,19 @@ if (!supabaseUrl || !serviceRoleKey) {
 
 export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-export const resendApiKey = process.env.RESEND_API_KEY;
+export const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
 if (!resendApiKey) {
-  console.warn("WARNING: Missing RESEND_API_KEY. Email features will fail.");
+  console.warn("WARNING: Missing RESEND_API_KEY in Vercel/Environment. Email features will fail.");
 }
-export const resend = new Resend(resendApiKey);
+export const resend = new Resend(resendApiKey || "missing_key");
 
-export const APP_URL = process.env.APP_URL || "http://localhost:3000";
+export const getBaseUrl = (req: any) => {
+  if (process.env.APP_URL) return process.env.APP_URL;
+  if (!req) return "http://localhost:3000";
+  const host = req.headers.host;
+  const protocol = host?.includes("localhost") ? "http" : "https";
+  return `${protocol}://${host}`;
+};
 
 export const emailHeader = `
   <div style="text-align: center; margin-bottom: 30px;">

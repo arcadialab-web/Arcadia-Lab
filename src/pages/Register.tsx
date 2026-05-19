@@ -32,8 +32,8 @@ export default function Register() {
     setError(null);
 
     try {
-      // Call our custom backend API instead of Supabase client directly
-      // this satisfies the "resend via API" requirement for custom emails
+      console.log('Chiamata API registrazione:', '/api/auth/signup');
+      // Call our custom backend API
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
@@ -46,7 +46,16 @@ export default function Register() {
         }),
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get('content-type');
+      let data;
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON response received:', text.substring(0, 100));
+        throw new Error('Il server ha risposto in modo inatteso. Verifica la connessione o contatta il supporto.');
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Errore durante la registrazione');
