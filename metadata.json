@@ -2,5 +2,7 @@
   "name": "Arcadia Lab.",
   "description": "Accademia di Yoga — Percorsi di forza, equilibrio, elasticità e consapevolezza, pensati per ogni corpo e ogni momento della vita.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

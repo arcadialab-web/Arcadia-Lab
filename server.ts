@@ -68,17 +68,20 @@ app.post("/api/auth/signup", async (req, res) => {
     if (user) {
       const { error: profileError } = await supabaseAdmin
         .from('profiles')
-        .insert([
-          { 
-            id: user.id, 
-            full_name: fullName, 
-            email: email,
-            role: 'customer' // Default role
-          }
-        ]);
+        .upsert({ 
+          id: user.id, 
+          full_name: fullName, 
+          email: email,
+          role: 'customer'
+        }, { onConflict: 'id' });
       
       if (profileError) {
-        console.error("Profile creation error:", profileError);
+        console.error("Profile creation error details:", {
+          message: profileError.message,
+          details: profileError.details,
+          hint: profileError.hint,
+          code: profileError.code
+        });
       }
     }
 
@@ -95,7 +98,7 @@ app.post("/api/auth/signup", async (req, res) => {
 
     // 4. Send email via Resend
     await resend.emails.send({
-      from: 'Arcadia Lab <onboarding@resend.dev>',
+      from: 'Arcadia Lab <info@arcadialab.it>',
       to: [email],
       subject: 'Conferma il tuo account - Arcadia Lab',
       html: `
@@ -140,7 +143,7 @@ app.post("/api/auth/recover", async (req, res) => {
 
     // Send email via Resend
     await resend.emails.send({
-      from: 'Arcadia Lab <onboarding@resend.dev>',
+      from: 'Arcadia Lab <info@arcadialab.it>',
       to: [email],
       subject: 'Recupero Password - Arcadia Lab',
       html: `
