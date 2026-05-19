@@ -1,6 +1,6 @@
 {
   "name": "Arcadia Lab.",
-  "description": "Accademia di Yoga — Percorsi di forza, equilibrio, elasticità e consapevolezza, pensati per ogni corpo e ogni momento della vita.",
+  "description": "Accademia di Yoga con abbonamenti gestiti tramite Stripe e Supabase Auth.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

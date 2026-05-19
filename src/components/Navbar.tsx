@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Instagram, LogOut, User as UserIcon, LogIn } from 'lucide-react';
-import { useAuth } from './AuthProvider';
+import { Instagram, LogOut, User } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, signOut, isAdmin } = useAuth();
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -16,7 +17,20 @@ export default function Navbar() {
       setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    
+    // Get current user
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const navLinks = [
@@ -44,12 +58,6 @@ export default function Navbar() {
       }
       if (isMobileMenuOpen) setIsMobileMenuOpen(false);
     }
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-    setIsMobileMenuOpen(false);
   };
 
   return (
@@ -96,7 +104,7 @@ export default function Navbar() {
               >
                 {link.name}
                 <motion.span 
-                   className="absolute -bottom-1.5 left-0 w-0 h-px bg-primary transition-all duration-300 group-hover:w-full"
+                  className="absolute -bottom-1.5 left-0 w-0 h-px bg-primary transition-all duration-300 group-hover:w-full"
                 ></motion.span>
               </motion.a>
             ))}
@@ -104,7 +112,7 @@ export default function Navbar() {
         </div>
 
         {/* DESKTOP CTA - RIGHT */}
-        <div className="hidden lg:flex flex-1 justify-end items-center gap-4">
+        <div className="hidden lg:flex flex-1 justify-end items-center gap-6">
           <motion.a
             href="https://www.instagram.com/arcadialab.cinzia/"
             target="_blank"
@@ -113,26 +121,33 @@ export default function Navbar() {
             whileTap={{ scale: 0.9 }}
             className="text-on-surface-variant hover:bg-primary hover:text-white transition-all duration-300 h-10 w-10 flex items-center justify-center rounded-full bg-surface-container-low"
           >
-            <Instagram size={18} strokeWidth={1.5} />
+            <Instagram size={20} strokeWidth={1.5} />
           </motion.a>
+
+          {user ? (
+            <div className="flex items-center gap-4">
+              <span className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant opacity-60">
+                {user.email}
+              </span>
+              <button
+                onClick={() => supabase.auth.signOut()}
+                className="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2"
+                title="Scomnetti"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
+          ) : (
+            <Link to="/auth">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                className="text-on-surface-variant font-label text-[11px] uppercase tracking-[0.2em] font-semibold hover:text-primary transition-all underline underline-offset-4"
+              >
+                Accedi
+              </motion.div>
+            </Link>
+          )}
           
-          <div className="h-4 w-px bg-outline-variant mx-2"></div>
-
-          {/* User Icon Link */}
-          <Link to={user ? (isAdmin ? "/admin" : "/dashboard") : "/login"}>
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              className={`h-10 w-10 flex items-center justify-center rounded-full transition-all duration-300 ${
-                user 
-                  ? 'bg-primary/10 text-primary border border-primary/20' 
-                  : 'bg-surface-container-low text-on-surface-variant hover:text-primary'
-              }`}
-            >
-              <UserIcon size={20} strokeWidth={1.5} />
-            </motion.div>
-          </Link>
-
           <Link 
             to="/#register" 
             onClick={(e) => handleNavClick(e, 'register')}
@@ -178,14 +193,7 @@ export default function Navbar() {
             {/* Background decorative element */}
             <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-surface-container-highest/30 rounded-full blur-3xl pointer-events-none"></div>
             
-            <div className="flex flex-col gap-6 text-center w-full max-w-sm relative z-10">
-              {user && (
-                <div className="mb-4">
-                  <p className="text-xs uppercase tracking-widest font-bold text-primary mb-1">Account</p>
-                  <p className="text-xl font-serif italic text-on-surface">{user.email}</p>
-                </div>
-              )}
-
+            <div className="flex flex-col gap-8 text-center w-full max-w-sm relative z-10">
               {navLinks.map((link, i) => (
                 <motion.a
                   initial={{ opacity: 0, y: 20 }}
@@ -201,69 +209,35 @@ export default function Navbar() {
                 </motion.a>
               ))}
               
-              <div className="h-px bg-outline-variant w-full my-4"></div>
-
-              {user ? (
-                <>
-                  <Link to={isAdmin ? "/admin" : "/dashboard"} onClick={() => setIsMobileMenuOpen(false)}>
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-4xl font-serif italic text-on-surface hover:text-primary transition-colors"
-                    >
-                      Area Personale
-                    </motion.div>
-                  </Link>
-                  <motion.button
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onClick={handleSignOut}
-                    className="text-2xl font-serif italic text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center gap-3 mt-4"
-                  >
-                    <LogOut size={24} /> Logout
-                  </motion.button>
-                </>
-              ) : (
-                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-4xl font-serif italic text-on-surface hover:text-primary transition-colors"
-                  >
-                    Accedi
-                  </motion.div>
-                </Link>
-              )}
-
-              <motion.a
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10, transition: { duration: 0.2 } }}
-                transition={{ delay: 0.3, duration: 0.4 }}
-                href="https://www.instagram.com/arcadialab.cinzia/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-3 text-on-surface-variant hover:text-primary transition-colors py-2 mt-4"
-              >
-                <Instagram size={24} strokeWidth={1} />
-                <span className="font-serif italic text-xl">Instagram</span>
-              </motion.a>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                transition={{ delay: 0.4, duration: 0.4 }}
-                className="mt-6"
-              >
-                <Link
-                  to="/#register"
-                  onClick={(e) => handleNavClick(e, 'register')}
-                  className="block bg-primary text-white px-8 py-5 rounded-full text-sm uppercase tracking-[0.2em] font-bold w-full shadow-2xl active:scale-95 transition-transform text-center"
+                <motion.a
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10, transition: { duration: 0.2 } }}
+                  transition={{ delay: navLinks.length * 0.05 + 0.05, duration: 0.4 }}
+                  href="https://www.instagram.com/arcadialab.cinzia/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-3 text-on-surface-variant hover:text-primary transition-colors py-2"
                 >
-                  Prenota la tua lezione
-                </Link>
-              </motion.div>
+                  <Instagram size={24} strokeWidth={1} />
+                  <span className="font-serif italic text-xl">Instagram</span>
+                </motion.a>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ delay: navLinks.length * 0.05 + 0.1, duration: 0.4 }}
+                  className="mt-6"
+                >
+                  <Link
+                    to="/#register"
+                    onClick={(e) => handleNavClick(e, 'register')}
+                    className="block bg-primary text-white px-8 py-5 rounded-full text-sm uppercase tracking-[0.2em] font-bold w-full shadow-2xl active:scale-95 transition-transform text-center"
+                  >
+                    Prenota la tua lezione
+                  </Link>
+                </motion.div>
             </div>
             
             <div className="absolute bottom-12 text-center w-full">
