@@ -46,25 +46,26 @@ const emailFooter = `
 `;
 
 // --- API ROUTES ---
+const apiRouter = express.Router();
 
 // Custom Signup with Resend Confirmation Email
-app.post("/api/auth/signup", async (req, res) => {
+apiRouter.post("/auth/signup", async (req, res) => {
   const { email, password, fullName } = req.body;
 
   try {
-    // 1. Create user in Supabase without sending the default email
+    // 1. Create user in Supabase
     const { data: userData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       user_metadata: { full_name: fullName },
-      email_confirm: false, // We will confirm manually via Resend link
+      email_confirm: false,
     });
 
     if (signUpError) throw signUpError;
 
     const user = userData.user;
 
-    // 2. Create profile record in the 'profiles' table
+    // 2. Create profile record
     if (user) {
       const { error: profileError } = await supabaseAdmin
         .from('profiles')
@@ -126,7 +127,7 @@ app.post("/api/auth/signup", async (req, res) => {
 });
 
 // Password Recovery with Resend
-app.post("/api/auth/recover", async (req, res) => {
+apiRouter.post("/auth/recover", async (req, res) => {
   const { email } = req.body;
 
   try {
@@ -170,9 +171,25 @@ app.post("/api/auth/recover", async (req, res) => {
   }
 });
 
+// Mount API router
+// Use both with and without /api prefix for maximum compatibility with different deployment strategies
+app.use("/api", apiRouter);
+app.use(apiRouter);
+
+// Fallback for API routes (prevent HTML response)
+app.use("/api", (req, res) => {
+  res.status(404).json({ error: "API route not found" });
+});
+
 // --- VITE MIDDLEWARE ---
 
 async function startServer() {
+  // On Vercel, we don't need to serve static files or the SPA fallback via Express
+  // because vercel.json handles it more efficiently.
+  if (process.env.VERCEL) {
+    return;
+  }
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -187,11 +204,9 @@ async function startServer() {
     });
   }
 
-  if (!process.env.VERCEL) {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
-  }
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
 }
 
 startServer();
