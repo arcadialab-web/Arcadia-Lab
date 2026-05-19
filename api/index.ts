@@ -6,7 +6,7 @@ app.use(express.json());
 
 // Logging middleware for Vercel (visible in Function Logs)
 app.use((req, res, next) => {
-  console.log(`[Vercel API Request] ${req.method} ${req.url}`);
+  console.log(`[Vercel API Request] ${req.method} ${req.originalUrl || req.url}`);
   next();
 });
 
