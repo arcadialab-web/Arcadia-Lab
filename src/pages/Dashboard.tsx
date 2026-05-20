@@ -16,17 +16,19 @@ import SettingsPanel from '../components/dashboard/SettingsPanel';
 import MyLessonsPanel from '../components/dashboard/MyLessonsPanel';
 import PlansManagementPanel from '../components/dashboard/PlansManagementPanel';
 import CoursesManagementPanel from '../components/dashboard/CoursesManagementPanel';
+import EventsManagementPanel from '../components/dashboard/EventsManagementPanel';
 
 const ADMIN_EMAILS = ['ai.danielcorso@gmail.com', 'arcadialabyoga@gmail.com'];
 
 const adminNav = [
-  { id: 'overview',       label: 'Panoramica',     icon: <LayoutDashboard size={17} strokeWidth={1.5} /> },
-  { id: 'analytics',      label: 'Analytics sito', icon: <BarChart2 size={17} strokeWidth={1.5} /> },
-  { id: 'plans',          label: 'Piani & Prezzi', icon: <PackagePlus size={17} strokeWidth={1.5} /> },
-  { id: 'courses',        label: 'Corsi',          icon: <CalendarCheck size={17} strokeWidth={1.5} /> },
-  { id: 'subscriptions',  label: 'Abbonamenti',    icon: <CreditCard size={17} strokeWidth={1.5} /> },
-  { id: 'users',          label: 'Utenti',         icon: <Users size={17} strokeWidth={1.5} /> },
-  { id: 'settings',       label: 'Impostazioni',   icon: <Settings size={17} strokeWidth={1.5} /> },
+  { id: 'overview',       label: 'Panoramica',        icon: <LayoutDashboard size={17} strokeWidth={1.5} /> },
+  { id: 'analytics',      label: 'Analytics sito',    icon: <BarChart2 size={17} strokeWidth={1.5} /> },
+  { id: 'plans',          label: 'Piani & Prezzi',    icon: <PackagePlus size={17} strokeWidth={1.5} /> },
+  { id: 'courses',        label: 'Corsi',             icon: <CalendarCheck size={17} strokeWidth={1.5} /> },
+  { id: 'events',         label: 'Eventi Speciali',   icon: <Star size={17} strokeWidth={1.5} /> },
+  { id: 'subscriptions',  label: 'Abbonamenti',       icon: <CreditCard size={17} strokeWidth={1.5} /> },
+  { id: 'users',          label: 'Utenti',            icon: <Users size={17} strokeWidth={1.5} /> },
+  { id: 'settings',       label: 'Impostazioni',      icon: <Settings size={17} strokeWidth={1.5} /> },
 ];
 
 const userNav = [
@@ -34,6 +36,7 @@ const userNav = [
   { id: 'lessons',   label: 'Le mie lezioni', icon: <CalendarCheck size={17} strokeWidth={1.5} /> },
   { id: 'plan',      label: 'Abbonamento',    icon: <Star size={17} strokeWidth={1.5} /> },
   { id: 'bookings',  label: 'Prenotazioni',   icon: <BookOpen size={17} strokeWidth={1.5} /> },
+  { id: 'events',    label: 'I miei eventi',  icon: <BarChart2 size={17} strokeWidth={1.5} /> },
   { id: 'settings',  label: 'Impostazioni',   icon: <Settings size={17} strokeWidth={1.5} /> },
 ];
 
@@ -422,6 +425,81 @@ function BookingsPanel() {
   );
 }
 
+// ── I miei eventi (utente) ────────────────────────────────────
+function MyEventsPanel() {
+  const { user } = useAuth();
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied]   = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('event_tickets')
+      .select('*, special_events(titolo, data_evento, luogo)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { setTickets(data || []); setLoading(false); });
+  }, [user]);
+
+  const copy = (codice: string) => {
+    navigator.clipboard.writeText(codice);
+    setCopied(codice);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  if (loading) return <div className="text-center py-16 font-serif italic text-on-surface-variant">Caricamento...</div>;
+
+  return (
+    <div className="space-y-4 max-w-2xl">
+      {tickets.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="font-serif italic text-on-surface-variant mb-3">Nessun biglietto acquistato.</p>
+          <a href="/#workshops" className="text-primary font-bold text-sm hover:underline">Scopri gli eventi →</a>
+        </div>
+      ) : tickets.map(t => {
+        const ev      = t.special_events as any;
+        const isPast  = ev?.data_evento ? new Date(ev.data_evento) < new Date() : false;
+        return (
+          <div key={t.id} className={`bg-surface-container-low border rounded-[1.5rem] p-5 ${isPast ? 'opacity-60 border-outline-variant/15' : 'border-outline-variant/30'}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm text-on-surface">{ev?.titolo ?? '—'}</p>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  {ev?.data_evento ? new Date(ev.data_evento).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
+                  {ev?.data_evento && ` · ${new Date(ev.data_evento).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`}
+                </p>
+                {ev?.luogo && <p className="text-xs text-on-surface-variant">📍 {ev.luogo}</p>}
+              </div>
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0"
+                style={{ background: t.stato === 'presente' ? 'rgba(139,168,136,0.15)' : isPast ? 'rgba(0,0,0,0.06)' : 'rgba(139,168,136,0.12)', color: t.stato === 'presente' ? '#8ba888' : isPast ? '#999' : '#8ba888' }}>
+                {t.stato === 'presente' ? 'Presente' : isPast ? 'Concluso' : 'Confermato'}
+              </span>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between bg-surface rounded-2xl px-4 py-3 border border-outline-variant/20">
+              <div>
+                <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-0.5">Codice di riferimento</p>
+                <p className="font-mono text-xl font-black text-primary tracking-widest">{t.codice_ref}</p>
+              </div>
+              <button onClick={() => copy(t.codice_ref)}
+                className="text-xs font-bold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
+                {copied === t.codice_ref ? '✓ Copiato' : '📋 Copia'}
+              </button>
+            </div>
+
+            {!isPast && (
+              <p className="text-[11px] text-on-surface-variant mt-3 flex items-center gap-1.5">
+                <span>⚕️</span>
+                Porta il certificato medico insieme a questo codice all'evento.
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { section = 'overview' } = useParams();
@@ -433,8 +511,8 @@ export default function Dashboard() {
     navigate(`/dashboard/${id}`, { replace: true });
   };
 
-  const validAdminSections = ['overview', 'analytics', 'plans', 'subscriptions', 'users', 'settings'];
-  const validUserSections  = ['overview', 'lessons', 'plan', 'bookings', 'settings'];
+  const validAdminSections = ['overview', 'analytics', 'plans', 'courses', 'events', 'subscriptions', 'users', 'settings'];
+  const validUserSections  = ['overview', 'lessons', 'plan', 'bookings', 'events', 'settings'];
   const validSections = admin ? validAdminSections : validUserSections;
   const activeSection = validSections.includes(section) ? section : 'overview';
 
@@ -445,6 +523,7 @@ export default function Dashboard() {
         case 'analytics':      return <AnalyticsPanel />;
         case 'plans':          return <PlansManagementPanel />;
         case 'courses':        return <CoursesManagementPanel />;
+        case 'events':         return <EventsManagementPanel />;
         case 'subscriptions':  return <SubscriptionsPanel />;
         case 'users':          return <UsersPanel />;
         case 'settings':       return <SettingsPanel isAdmin />;
@@ -457,6 +536,7 @@ export default function Dashboard() {
         case 'lessons':   return <MyLessonsPanel />;
         case 'plan':      return <MyPlanPanel />;
         case 'bookings':  return <BookingsPanel />;
+        case 'events':    return <MyEventsPanel />;
         case 'settings':  return <SettingsPanel isAdmin={false} />;
         default:          return <UserDashboard userName={userName} />;
       }

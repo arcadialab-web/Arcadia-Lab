@@ -10,6 +10,7 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
 };
+const cors = corsHeaders; // alias usato nel branch evento
 
 // ── Verifica firma Stripe con Web Crypto (nativo Deno) ────────
 async function verifyStripeSignature(body: string, sigHeader: string, secret: string): Promise<boolean> {
@@ -142,8 +143,130 @@ Deno.serve(async (req) => {
     });
   }
 
-  const session         = event.data.object;
-  const customerEmail   = session.customer_details?.email ?? session.metadata?.customer_email;
+  const session      = event.data.object;
+  const metaType     = session.metadata?.type ?? 'plan';
+  const customerEmail = session.customer_details?.email ?? session.metadata?.email ?? session.metadata?.customer_email;
+
+  if (!customerEmail) {
+    console.error('Email mancante');
+    return new Response('Email mancante', { status: 400 });
+  }
+
+  // ── EVENTO SPECIALE ───────────────────────────────────────────
+  if (metaType === 'event') {
+    const eventId    = session.metadata?.event_id;
+    const nome       = session.metadata?.nome ?? '';
+    const cognome    = session.metadata?.cognome ?? '';
+    const telefono   = session.metadata?.telefono ?? '';
+    const userId     = session.metadata?.user_id || null;
+    const isAbbonato = session.metadata?.is_abbonato === 'true';
+    const prezzoStr  = session.metadata?.prezzo_pagato ?? '0';
+    const eventTitolo = session.metadata?.event_titolo ?? 'Evento';
+
+    // Genera codice riferimento: ARC-XXXXXX
+    const chars   = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const codice  = 'ARC-' + Array.from(crypto.getRandomValues(new Uint8Array(6)))
+      .map(b => chars[b % chars.length]).join('');
+
+    // Salva biglietto
+    const { error: ticketErr } = await supabase.from('event_tickets').insert({
+      event_id:         eventId,
+      user_id:          userId || null,
+      nome,
+      cognome,
+      email:            customerEmail,
+      telefono,
+      codice_ref:       codice,
+      stripe_payment_id: session.payment_intent ?? null,
+      prezzo_pagato:    parseFloat(prezzoStr),
+      is_abbonato:      isAbbonato,
+    });
+
+    if (ticketErr) {
+      console.error('Errore biglietto:', JSON.stringify(ticketErr));
+      return new Response('Errore salvataggio biglietto', { status: 500 });
+    }
+
+    // Leggi data evento per l'email
+    const { data: evento } = await supabase.from('special_events').select('data_evento, luogo').eq('id', eventId).single();
+    const dataFmt = evento?.data_evento
+      ? new Date(evento.data_evento).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '—';
+
+    // Email biglietto
+    const htmlEmail = `<!DOCTYPE html>
+<html lang="it">
+<head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#fdfbf7;font-family:Georgia,serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#fdfbf7;padding:40px 16px;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+  <tr><td style="background:#2b2927;padding:36px 48px;text-align:center;">
+    <p style="margin:0;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.5);font-family:sans-serif;">Arcadia Lab. Yoga</p>
+    <h1 style="margin:10px 0 0;font-size:28px;color:#fff;font-weight:400;font-style:italic;">Il tuo biglietto è confermato!</h1>
+  </td></tr>
+  <tr><td style="padding:36px 48px;">
+    <p style="margin:0 0 20px;font-size:15px;color:#2b2927;line-height:1.7;font-family:sans-serif;">
+      Ciao <strong>${nome} ${cognome}</strong>,<br/>
+      la tua prenotazione per l'evento <strong>${eventTitolo}</strong> è confermata.
+    </p>
+
+    <!-- Codice riferimento -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f1e8;border-radius:16px;margin-bottom:24px;">
+      <tr><td style="padding:24px;text-align:center;">
+        <p style="margin:0 0 8px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#5a544c;font-family:sans-serif;">Il tuo codice di riferimento</p>
+        <p style="margin:0;font-family:monospace;font-size:32px;font-weight:900;color:#b56a56;letter-spacing:.2em;">${codice}</p>
+        <p style="margin:8px 0 0;font-size:12px;color:#5a544c;font-family:sans-serif;">Presentalo all'ingresso dell'evento</p>
+      </td></tr>
+    </table>
+
+    <!-- Dettagli evento -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #efebdf;border-radius:12px;margin-bottom:24px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 4px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#5a544c;font-family:sans-serif;">Evento</p>
+        <p style="margin:0 0 12px;font-size:16px;font-weight:700;color:#2b2927;font-family:sans-serif;">${eventTitolo}</p>
+        <p style="margin:0 0 4px;font-size:12px;color:#5a544c;font-family:sans-serif;">📅 ${dataFmt}</p>
+        ${evento?.luogo ? `<p style="margin:4px 0 0;font-size:12px;color:#5a544c;font-family:sans-serif;">📍 ${evento.luogo}</p>` : ''}
+      </td></tr>
+    </table>
+
+    <!-- Avviso certificato -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f0;border:1px solid #f0d4c4;border-radius:12px;margin-bottom:24px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0;font-size:13px;color:#5a544c;line-height:1.6;font-family:sans-serif;">
+          <strong style="color:#b56a56;">⚕️ Certificato medico richiesto</strong><br/>
+          Porta con te il <strong>certificato medico di buona salute</strong> insieme a questo codice.
+          È obbligatorio per accedere all'evento.
+        </p>
+      </td></tr>
+    </table>
+
+    <p style="margin:0;font-size:13px;color:#5a544c;font-family:sans-serif;">
+      Per info: <a href="mailto:arcadialabyoga@gmail.com" style="color:#b56a56;">arcadialabyoga@gmail.com</a>
+    </p>
+  </td></tr>
+  <tr><td style="background:#f5f1e8;padding:20px 48px;text-align:center;">
+    <p style="margin:0;font-size:12px;color:#a39c90;font-family:sans-serif;font-style:italic;">Arcadia Lab. Yoga · <a href="https://www.arcadialab.it" style="color:#b56a56;text-decoration:none;">www.arcadialab.it</a></p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>`;
+
+    await sendEmail(
+      customerEmail,
+      `Il tuo biglietto per "${eventTitolo}" — Codice: ${codice}`,
+      htmlEmail,
+    );
+
+    console.log(`✅ Biglietto evento ${codice} emesso per ${customerEmail}`);
+
+    return new Response(JSON.stringify({ received: true }), {
+      status: 200, headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  }
+
+  // ── ABBONAMENTO (flusso esistente) ────────────────────────────
   const planId          = session.metadata?.plan_id;
   const lezioni         = parseInt(session.metadata?.lezioni_totali ?? '0');
   const durata          = parseInt(session.metadata?.durata_giorni  ?? '30');
@@ -151,12 +274,12 @@ Deno.serve(async (req) => {
   const stripeCustomerId = session.customer ?? null;
   const planNome        = session.metadata?.plan_nome ?? 'Abbonamento';
 
-  if (!customerEmail || !planId) {
-    console.error('Dati mancanti:', { customerEmail, planId });
+  if (!planId) {
+    console.error('plan_id mancante');
     return new Response('Dati mancanti', { status: 400 });
   }
 
-  console.log('Elaborazione per:', customerEmail);
+  console.log('Elaborazione abbonamento per:', customerEmail);
 
   try {
     let userId: string;
