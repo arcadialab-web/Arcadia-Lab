@@ -6,7 +6,6 @@ import {
 } from 'recharts';
 import { Eye, FileText, ExternalLink, RefreshCw, Calendar, Radio } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import type { RealtimeChannel } from '@supabase/supabase-js';
 
 const T   = '#b56a56';
 const S   = '#8ba888';
@@ -58,23 +57,24 @@ export default function AnalyticsPanel() {
   const [livePages, setLivePages] = useState<string[]>([]);
 
   useEffect(() => {
-    let channel: RealtimeChannel | null = null;
+    // Piccolo delay per dare tempo a LiveTracker di rimuovere il suo canale
+    const timer = setTimeout(() => {
+      const channel = supabase.channel('live_visitors');
 
-    const connect = () => {
-      channel = supabase.channel('live_visitors');
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          if (!channel) return;
-          const state = channel.presenceState();
-          const all   = Object.values(state).flat() as any[];
-          setLiveCount(all.length);
-          setLivePages(all.map(v => v.page).filter(Boolean));
-        })
-        .subscribe();
-    };
+      // Aggiunge i listener PRIMA di subscribe() — obbligatorio
+      channel.on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const all   = Object.values(state).flat() as any[];
+        setLiveCount(all.length);
+        setLivePages(all.map((v: any) => v.page).filter(Boolean));
+      });
 
-    connect();
-    return () => { if (channel) supabase.removeChannel(channel); };
+      channel.subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const load = useCallback(async () => {

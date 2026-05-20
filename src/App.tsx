@@ -29,42 +29,54 @@ function PageTracker() {
 
 // ── Traccia presenza live (Realtime, nessun DB) ───────────────
 function LiveTracker() {
-  const location = useLocation();
+  const location   = useLocation();
   const channelRef = useRef<RealtimeChannel | null>(null);
 
+  const cleanUp = () => {
+    if (channelRef.current) {
+      channelRef.current.untrack();
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+  };
+
   useEffect(() => {
-    // ID anonimo univoco per questa sessione (non salvato nel DB)
-    let visitorId = sessionStorage.getItem('_vid');
-    if (!visitorId) {
-      visitorId = Math.random().toString(36).slice(2, 10);
-      sessionStorage.setItem('_vid', visitorId);
+    const onDashboard = location.pathname.startsWith('/dashboard');
+
+    if (onDashboard) {
+      // L'admin entra nella dashboard → libera il canale
+      // così AnalyticsPanel può sottoscriversi senza conflitti
+      cleanUp();
+      return;
     }
 
-    const channel = supabase.channel('live_visitors', {
-      config: { presence: { key: visitorId } },
-    });
-
-    channel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await channel.track({ page: location.pathname });
+    // Crea il canale solo se non esiste già
+    if (!channelRef.current) {
+      let visitorId = sessionStorage.getItem('_vid');
+      if (!visitorId) {
+        visitorId = Math.random().toString(36).slice(2, 10);
+        sessionStorage.setItem('_vid', visitorId);
       }
-    });
 
-    channelRef.current = channel;
+      const channel = supabase.channel('live_visitors', {
+        config: { presence: { key: visitorId } },
+      });
 
-    return () => {
-      channel.untrack();
-      supabase.removeChannel(channel);
-      channelRef.current = null;
-    };
-  }, []);
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ page: location.pathname });
+        }
+      });
 
-  // Aggiorna la pagina corrente senza ricreare il canale
-  useEffect(() => {
-    if (!location.pathname.startsWith('/dashboard') && channelRef.current) {
+      channelRef.current = channel;
+    } else {
+      // Aggiorna solo la pagina corrente
       channelRef.current.track({ page: location.pathname });
     }
   }, [location.pathname]);
+
+  // Pulizia finale all'unmount
+  useEffect(() => () => cleanUp(), []);
 
   return null;
 }
