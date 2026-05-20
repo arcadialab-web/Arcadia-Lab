@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
@@ -10,11 +11,27 @@ import CookieBanner from './components/CookieBanner';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
+import { supabase } from './lib/supabase';
+
+// Traccia ogni cambio di pagina
+function PageTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    // Non traccia le sezioni admin/dashboard
+    if (location.pathname.startsWith('/dashboard')) return;
+    supabase.from('page_views').insert({
+      path:     location.pathname || '/',
+      referrer: document.referrer || null,
+    }).then(() => {});
+  }, [location.pathname]);
+  return null;
+}
 
 export default function App() {
   return (
     <AuthProvider>
       <Router>
+        <PageTracker />
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<Home />} />

@@ -1,61 +1,34 @@
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import {
-  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Eye, Users, MousePointerClick, Clock } from 'lucide-react';
+import { Eye, FileText, ExternalLink, RefreshCw, Calendar } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
-const T = '#b56a56';
-const S = '#8ba888';
-
-const visitiSettimanali = [
-  { giorno: 'Lun', visite: 42, unici: 31 },
-  { giorno: 'Mar', visite: 58, unici: 44 },
-  { giorno: 'Mer', visite: 75, unici: 60 },
-  { giorno: 'Gio', visite: 61, unici: 48 },
-  { giorno: 'Ven', visite: 89, unici: 72 },
-  { giorno: 'Sab', visite: 112, unici: 94 },
-  { giorno: 'Dom', visite: 67, unici: 55 },
-];
-
-const visitiMensili = [
-  { mese: 'Gen', visite: 820 }, { mese: 'Feb', visite: 940 },
-  { mese: 'Mar', visite: 1120 }, { mese: 'Apr', visite: 980 },
-  { mese: 'Mag', visite: 1340 }, { mese: 'Giu', visite: 1580 },
-  { mese: 'Lug', visite: 1420 }, { mese: 'Ago', visite: 1100 },
-  { mese: 'Set', visite: 1680 }, { mese: 'Ott', visite: 1890 },
-  { mese: 'Nov', visite: 2100 }, { mese: 'Dic', visite: 1760 },
-];
-
-const pagineTop = [
-  { pagina: 'Home', visite: 3420, bounce: '42%' },
-  { pagina: 'Corsi', visite: 1840, bounce: '35%' },
-  { pagina: 'Abbonamenti', visite: 1560, bounce: '28%' },
-  { pagina: 'Workshop', visite: 980, bounce: '51%' },
-  { pagina: 'Chi sono', visite: 760, bounce: '38%' },
-];
-
-const dispositivi = [
-  { name: 'Mobile', value: 62, color: T },
-  { name: 'Desktop', value: 31, color: S },
-  { name: 'Tablet', value: 7, color: '#c4a882' },
-];
-
-const sorgenti = [
-  { name: 'Instagram', visite: 1840, color: T },
-  { name: 'Ricerca Google', visite: 1420, color: S },
-  { name: 'Diretto', visite: 980, color: '#c4a882' },
-  { name: 'Referral', visite: 340, color: '#d2ccb6' },
-];
-
-const kpis = [
-  { label: 'Visite totali (mese)', value: '4.580', icon: Eye, delta: '+18%', positive: true },
-  { label: 'Utenti unici', value: '3.241', icon: Users, delta: '+22%', positive: true },
-  { label: 'Tasso di conversione', value: '3.2%', icon: MousePointerClick, delta: '+0.8%', positive: true },
-  { label: 'Tempo medio sul sito', value: '2m 47s', icon: Clock, delta: '+12s', positive: true },
-];
-
+const T   = '#b56a56';
+const S   = '#8ba888';
 const card = 'bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-6 shadow-sm';
+
+type Periodo = '1' | '7' | '30' | '90' | 'custom';
+
+interface Range { from: string; to: string }
+
+function getRange(periodo: Periodo, custom: Range): { from: Date; to: Date } {
+  const to  = new Date();
+  to.setHours(23, 59, 59, 999);
+  if (periodo === 'custom') {
+    return {
+      from: new Date(custom.from + 'T00:00:00'),
+      to:   new Date(custom.to   + 'T23:59:59'),
+    };
+  }
+  const from = new Date();
+  from.setDate(from.getDate() - parseInt(periodo) + 1);
+  from.setHours(0, 0, 0, 0);
+  return { from, to };
+}
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -70,151 +43,265 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function AnalyticsPanel() {
+  const [periodo, setPeriodo]   = useState<Periodo>('7');
+  const [custom, setCustom]     = useState<Range>({ from: '', to: '' });
+  const [loading, setLoading]   = useState(true);
+  const [totaleVisite, setTotale]       = useState(0);
+  const [pagineUniche, setPagineUniche] = useState(0);
+  const [visitiGiorno, setPerGiorno]   = useState<{ data: string; visite: number }[]>([]);
+  const [topPagine, setTopPagine]       = useState<{ path: string; count: number }[]>([]);
+  const [topReferrer, setTopReferrer]   = useState<{ ref: string; count: number }[]>([]);
+
+  const load = useCallback(async () => {
+    if (periodo === 'custom' && (!custom.from || !custom.to)) return;
+    setLoading(true);
+
+    const { from, to } = getRange(periodo, custom);
+    const fromISO = from.toISOString();
+    const toISO   = to.toISOString();
+
+    const { data: visite } = await supabase
+      .from('page_views')
+      .select('path, referrer, created_at')
+      .gte('created_at', fromISO)
+      .lte('created_at', toISO)
+      .order('created_at', { ascending: true });
+
+    if (!visite) { setLoading(false); return; }
+
+    // Totale
+    setTotale(visite.length);
+
+    // Pagine uniche
+    const paths = new Set(visite.map(v => v.path));
+    setPagineUniche(paths.size);
+
+    // Visite per giorno
+    const perGiorno: Record<string, number> = {};
+    const days = Math.ceil((to.getTime() - from.getTime()) / 86400000);
+    for (let i = 0; i <= days; i++) {
+      const d = new Date(from);
+      d.setDate(d.getDate() + i);
+      const key = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+      perGiorno[key] = 0;
+    }
+    visite.forEach(v => {
+      const d = new Date(v.created_at);
+      const key = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+      if (key in perGiorno) perGiorno[key]++;
+    });
+    setPerGiorno(Object.entries(perGiorno).map(([data, visite]) => ({ data, visite })));
+
+    // Top pagine
+    const pagineCount: Record<string, number> = {};
+    visite.forEach(v => { pagineCount[v.path] = (pagineCount[v.path] || 0) + 1; });
+    setTopPagine(
+      Object.entries(pagineCount)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 8)
+        .map(([path, count]) => ({ path, count }))
+    );
+
+    // Top referrer
+    const refCount: Record<string, number> = {};
+    visite.forEach(v => {
+      const ref = v.referrer ? new URL(v.referrer).hostname : 'Diretto';
+      refCount[ref] = (refCount[ref] || 0) + 1;
+    });
+    setTopReferrer(
+      Object.entries(refCount)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 6)
+        .map(([ref, count]) => ({ ref, count }))
+    );
+
+    setLoading(false);
+  }, [periodo, custom]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const periodi: { id: Periodo; label: string }[] = [
+    { id: '1',  label: 'Oggi' },
+    { id: '7',  label: '7 giorni' },
+    { id: '30', label: '30 giorni' },
+    { id: '90', label: '90 giorni' },
+    { id: 'custom', label: 'Personalizzato' },
+  ];
+
+  const maxPagine  = topPagine[0]?.count  || 1;
+  const maxReferrer = topReferrer[0]?.count || 1;
+
   return (
     <div className="space-y-6">
 
-      {/* KPI */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((kpi, i) => (
-          <motion.div key={kpi.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }} className={`${card} flex flex-col gap-4`}>
-            <div className="flex items-start justify-between">
-              <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
-                <kpi.icon size={17} className="text-primary" strokeWidth={1.5} />
-              </div>
-              <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background: `${S}22`, color: S }}>{kpi.delta}</span>
-            </div>
-            <div>
-              <p className="text-2xl font-serif font-bold text-on-surface">{kpi.value}</p>
-              <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mt-0.5">{kpi.label}</p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Visite mensili */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className={card}>
-        <h3 className="font-serif text-xl text-on-surface mb-1">Visite mensili</h3>
-        <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-6">Anno corrente</p>
-        <div style={{ height: 240 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={visitiMensili} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gradAnalytics" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={T} stopOpacity={0.25} />
-                  <stop offset="95%" stopColor={T} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#efebdf" vertical={false} />
-              <XAxis dataKey="mese" tick={{ fontSize: 11, fill: '#5a544c', fontFamily: 'Manrope' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#5a544c', fontFamily: 'Manrope' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="visite" name="Visite" stroke={T} strokeWidth={2.5} fill="url(#gradAnalytics)" dot={{ fill: T, strokeWidth: 0, r: 3 }} activeDot={{ r: 6 }} />
-            </AreaChart>
-          </ResponsiveContainer>
+      {/* Selettore periodo */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="flex gap-2 flex-wrap">
+          {periodi.map(p => (
+            <button key={p.id} onClick={() => setPeriodo(p.id)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all ${periodo === p.id ? 'bg-primary text-white shadow-md' : 'bg-surface-container-low border border-outline-variant/40 text-on-surface-variant hover:text-on-surface'}`}
+            >
+              {p.id === 'custom' && <Calendar size={12} />}
+              {p.label}
+            </button>
+          ))}
         </div>
-      </motion.div>
-
-      {/* Row: visite settimana + dispositivi */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.42 }} className={card}>
-          <h3 className="font-serif text-xl text-on-surface mb-1">Visite per giorno</h3>
-          <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-6">Ultima settimana</p>
-          <div style={{ height: 210 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={visitiSettimanali} margin={{ top: 5, right: 5, left: -20, bottom: 0 }} barSize={22} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#efebdf" vertical={false} />
-                <XAxis dataKey="giorno" tick={{ fontSize: 11, fill: '#5a544c', fontFamily: 'Manrope' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#5a544c', fontFamily: 'Manrope' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="visite" name="Visite totali" fill={T} fillOpacity={0.8} radius={[6, 6, 0, 0]} />
-                <Bar dataKey="unici" name="Utenti unici" fill={S} fillOpacity={0.7} radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+        {periodo === 'custom' && (
+          <div className="flex gap-2 items-center">
+            <input type="date" value={custom.from} onChange={e => setCustom(c => ({ ...c, from: e.target.value }))}
+              className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-2 text-xs text-on-surface focus:outline-none focus:border-primary" />
+            <span className="text-xs text-on-surface-variant">→</span>
+            <input type="date" value={custom.to} onChange={e => setCustom(c => ({ ...c, to: e.target.value }))}
+              className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-3 py-2 text-xs text-on-surface focus:outline-none focus:border-primary" />
+            <button onClick={load} className="bg-primary text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-opacity-90 transition-all">
+              Applica
+            </button>
           </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.52 }} className={card}>
-          <h3 className="font-serif text-xl text-on-surface mb-1">Dispositivi</h3>
-          <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-4">Tipologia di accesso</p>
-          <div className="flex items-center gap-6">
-            <div style={{ height: 180, flex: 1 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={dispositivi} cx="50%" cy="50%" innerRadius={50} outerRadius={78} paddingAngle={3} dataKey="value" strokeWidth={0}>
-                    {dispositivi.map((d, i) => <Cell key={i} fill={d.color} />)}
-                  </Pie>
-                  <Tooltip formatter={(v: number) => [`${v}%`, '']} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="space-y-4">
-              {dispositivi.map((d) => (
-                <div key={d.name} className="flex items-center gap-2.5">
-                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: d.color }} />
-                  <div>
-                    <p className="text-xs font-bold text-on-surface">{d.name}</p>
-                    <p className="text-xs text-on-surface-variant">{d.value}%</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.div>
+        )}
+        <button onClick={load} className="sm:ml-auto text-on-surface-variant hover:text-primary transition-colors" title="Aggiorna">
+          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+        </button>
       </div>
 
-      {/* Row: pagine top + sorgenti */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.62 }} className={card}>
-          <h3 className="font-serif text-xl text-on-surface mb-1">Pagine più visitate</h3>
-          <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-5">Top 5 pagine del sito</p>
-          <div className="space-y-3">
-            {pagineTop.map((p, i) => (
-              <div key={p.pagina} className="flex items-center gap-3">
-                <span className="text-xs font-bold text-on-surface-variant w-4">{i + 1}</span>
-                <div className="flex-1">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="font-semibold text-on-surface">{p.pagina}</span>
-                    <span className="text-on-surface-variant">{p.visite.toLocaleString('it-IT')}</span>
-                  </div>
-                  <div className="h-1.5 bg-surface-container rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${(p.visite / pagineTop[0].visite) * 100}%`, background: i === 0 ? T : S, opacity: 1 - i * 0.12 }} />
-                  </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-24 text-on-surface-variant">
+          <RefreshCw size={20} className="animate-spin mr-3 text-primary" />
+          <span className="font-serif italic">Caricamento analytics...</span>
+        </div>
+      ) : (
+        <>
+          {/* KPI */}
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: 'Visite totali',  value: totaleVisite.toLocaleString('it-IT'),  icon: Eye },
+              { label: 'Pagine visitate', value: String(pagineUniche), icon: FileText },
+            ].map((k, i) => (
+              <motion.div key={k.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className={`${card} flex flex-col gap-4`}>
+                <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <k.icon size={17} className="text-primary" strokeWidth={1.5} />
                 </div>
-                <span className="text-[10px] text-on-surface-variant font-label">bounce {p.bounce}</span>
-              </div>
+                <div>
+                  <p className="text-3xl font-serif font-bold text-on-surface">{k.value}</p>
+                  <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mt-0.5">{k.label}</p>
+                </div>
+              </motion.div>
             ))}
           </div>
-        </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.72 }} className={card}>
-          <h3 className="font-serif text-xl text-on-surface mb-1">Sorgenti di traffico</h3>
-          <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-5">Da dove arrivano i visitatori</p>
-          <div className="space-y-4">
-            {sorgenti.map((s) => (
-              <div key={s.name} className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: s.color }} />
-                <div className="flex-1">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="font-semibold text-on-surface">{s.name}</span>
-                    <span className="text-on-surface-variant">{s.visite.toLocaleString('it-IT')}</span>
-                  </div>
-                  <div className="h-1.5 bg-surface-container rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${(s.visite / sorgenti[0].visite) * 100}%`, background: s.color }} />
-                  </div>
-                </div>
+          {/* Grafico visite per giorno */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className={card}>
+            <h3 className="font-serif text-xl text-on-surface mb-1">Andamento visite</h3>
+            <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-5">Visite per giorno nel periodo selezionato</p>
+            {visitiGiorno.length === 0 || totaleVisite === 0 ? (
+              <div className="flex items-center justify-center h-40 text-on-surface-variant font-serif italic text-sm">Nessuna visita nel periodo</div>
+            ) : (
+              <div style={{ height: 240 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={visitiGiorno} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={T} stopOpacity={0.25} />
+                        <stop offset="95%" stopColor={T} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#efebdf" vertical={false} />
+                    <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#5a544c', fontFamily: 'Manrope' }} axisLine={false} tickLine={false}
+                      interval={visitiGiorno.length > 14 ? Math.floor(visitiGiorno.length / 7) : 0} />
+                    <YAxis tick={{ fontSize: 10, fill: '#5a544c', fontFamily: 'Manrope' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area type="monotone" dataKey="visite" name="Visite" stroke={T} strokeWidth={2.5} fill="url(#gA)" dot={false} activeDot={{ r: 5, fill: T }} />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
-            ))}
-          </div>
-          <div className="mt-5 p-3 bg-surface rounded-2xl border border-outline-variant/20">
-            <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1">Suggerimento</p>
-            <p className="text-xs text-on-surface">Instagram genera il 40% del traffico — continua a pubblicare contenuti regolarmente.</p>
-          </div>
-        </motion.div>
-      </div>
+            )}
+          </motion.div>
 
-      <p className="text-center text-xs text-on-surface-variant/40 font-label">
-        * Dati di esempio. Integra Google Analytics o Plausible per dati reali.
-      </p>
+          {/* Top pagine + Referrer */}
+          <div className="grid lg:grid-cols-2 gap-6">
+
+            {/* Top pagine */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }} className={card}>
+              <h3 className="font-serif text-xl text-on-surface mb-1">Pagine più visitate</h3>
+              <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-5">Per numero di visite</p>
+              {topPagine.length === 0 ? (
+                <div className="text-center py-8 font-serif italic text-on-surface-variant text-sm">Nessun dato</div>
+              ) : (
+                <div className="space-y-3">
+                  {topPagine.map((p, i) => (
+                    <div key={p.path} className="flex items-center gap-3">
+                      <span className="text-xs font-bold text-on-surface-variant w-5 flex-shrink-0">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="font-semibold text-on-surface truncate">{p.path === '/' ? 'Home' : p.path}</span>
+                          <span className="text-on-surface-variant ml-2 flex-shrink-0">{p.count}</span>
+                        </div>
+                        <div className="h-1.5 bg-surface-container rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(p.count / maxPagine) * 100}%`, background: i === 0 ? T : S, opacity: 1 - i * 0.1 }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+
+            {/* Sorgenti */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 }} className={card}>
+              <h3 className="font-serif text-xl text-on-surface mb-1">Sorgenti di traffico</h3>
+              <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-5">Da dove arrivano i visitatori</p>
+              {topReferrer.length === 0 ? (
+                <div className="text-center py-8 font-serif italic text-on-surface-variant text-sm">Nessun dato</div>
+              ) : (
+                <div className="space-y-4">
+                  {topReferrer.map((r, i) => (
+                    <div key={r.ref} className="flex items-center gap-3">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: i === 0 ? T : S }} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="font-semibold text-on-surface flex items-center gap-1 truncate">
+                            {r.ref !== 'Diretto' && <ExternalLink size={10} className="flex-shrink-0" />}
+                            {r.ref}
+                          </span>
+                          <span className="text-on-surface-variant ml-2 flex-shrink-0">{r.count}</span>
+                        </div>
+                        <div className="h-1.5 bg-surface-container rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${(r.count / maxReferrer) * 100}%`, background: i === 0 ? T : S }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </div>
+
+          {/* Grafico a barre top pagine */}
+          {topPagine.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.48 }} className={card}>
+              <h3 className="font-serif text-xl text-on-surface mb-1">Distribuzione visite</h3>
+              <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-5">Visite per pagina</p>
+              <div style={{ height: 220 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topPagine.map(p => ({ ...p, path: p.path === '/' ? 'Home' : p.path }))} margin={{ top: 5, right: 5, left: -20, bottom: 0 }} barSize={24}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#efebdf" vertical={false} />
+                    <XAxis dataKey="path" tick={{ fontSize: 10, fill: '#5a544c', fontFamily: 'Manrope' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#5a544c', fontFamily: 'Manrope' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="count" name="Visite" fill={T} fillOpacity={0.85} radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+          )}
+
+          <div className="flex items-center gap-2 p-4 bg-surface-container-low border border-outline-variant/20 rounded-2xl">
+            <Eye size={14} className="text-primary flex-shrink-0" strokeWidth={1.5} />
+            <p className="text-xs text-on-surface-variant">
+              Le visite vengono registrate automaticamente ad ogni accesso al sito. Le sessioni della dashboard admin non vengono conteggiate.
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }
