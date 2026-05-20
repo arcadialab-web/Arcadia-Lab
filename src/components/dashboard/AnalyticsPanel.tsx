@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Eye, FileText, ExternalLink, RefreshCw, Calendar } from 'lucide-react';
+import { Eye, FileText, ExternalLink, RefreshCw, Calendar, Radio } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 const T   = '#b56a56';
 const S   = '#8ba888';
@@ -51,6 +52,30 @@ export default function AnalyticsPanel() {
   const [visitiGiorno, setPerGiorno]   = useState<{ data: string; visite: number }[]>([]);
   const [topPagine, setTopPagine]       = useState<{ path: string; count: number }[]>([]);
   const [topReferrer, setTopReferrer]   = useState<{ ref: string; count: number }[]>([]);
+
+  // ── Live visitors ──
+  const [liveCount, setLiveCount] = useState(0);
+  const [livePages, setLivePages] = useState<string[]>([]);
+
+  useEffect(() => {
+    let channel: RealtimeChannel | null = null;
+
+    const connect = () => {
+      channel = supabase.channel('live_visitors');
+      channel
+        .on('presence', { event: 'sync' }, () => {
+          if (!channel) return;
+          const state = channel.presenceState();
+          const all   = Object.values(state).flat() as any[];
+          setLiveCount(all.length);
+          setLivePages(all.map(v => v.page).filter(Boolean));
+        })
+        .subscribe();
+    };
+
+    connect();
+    return () => { if (channel) supabase.removeChannel(channel); };
+  }, []);
 
   const load = useCallback(async () => {
     if (periodo === 'custom' && (!custom.from || !custom.to)) return;
@@ -162,6 +187,37 @@ export default function AnalyticsPanel() {
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
+
+      {/* Widget live */}
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-4 px-5 py-3.5 rounded-2xl border bg-surface-container-low border-outline-variant/30"
+        >
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: liveCount > 0 ? '#8ba888' : '#ccc' }} />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ background: liveCount > 0 ? '#8ba888' : '#ccc' }} />
+            </span>
+            <Radio size={14} className="text-on-surface-variant" strokeWidth={1.5} />
+            <span className="text-sm font-bold text-on-surface">
+              {liveCount === 0 ? 'Nessun visitatore' : liveCount === 1 ? '1 persona sul sito ora' : `${liveCount} persone sul sito ora`}
+            </span>
+          </div>
+          {livePages.length > 0 && (
+            <div className="flex gap-2 flex-wrap ml-2">
+              {Object.entries(
+                livePages.reduce<Record<string, number>>((acc, p) => ({ ...acc, [p]: (acc[p] || 0) + 1 }), {})
+              ).map(([page, count]) => (
+                <span key={page} className="text-[11px] px-2.5 py-1 rounded-full bg-surface border border-outline-variant/30 text-on-surface-variant">
+                  {page === '/' ? 'Home' : page} {count > 1 ? `×${count}` : ''}
+                </span>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       {loading ? (
         <div className="flex items-center justify-center py-24 text-on-surface-variant">
