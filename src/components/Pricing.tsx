@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Plan {
@@ -13,41 +14,127 @@ interface Plan {
   ordine: number;
 }
 
-async function redirectToCheckout(planId: string) {
-  try {
-    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-      body: { plan_id: planId },
-    });
-    if (error || !data?.url) throw new Error('Errore nella creazione del pagamento');
-    window.location.href = data.url;
-  } catch (err) {
-    alert('Si è verificato un errore. Riprova o contattaci direttamente.');
-    console.error(err);
-  }
-}
-
-function PlanButton({ planId, label = 'Inizia ora' }: { planId: string; label?: string }) {
+// ── Modal email pre-checkout ──────────────────────────────────
+function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
+  const [email, setEmail]   = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError]   = useState('');
 
-  const handleClick = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
     setLoading(true);
-    await redirectToCheckout(planId);
-    setLoading(false);
+    setError('');
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('create-checkout-session', {
+        body: { plan_id: plan.id, email: email.toLowerCase().trim() },
+      });
+      if (fnError || !data?.url) throw new Error('Errore nella creazione del pagamento');
+      window.location.href = data.url;
+    } catch {
+      setError('Si è verificato un errore. Riprova o contattaci.');
+      setLoading(false);
+    }
   };
 
   return (
-    <motion.button
-      onClick={handleClick}
-      disabled={loading}
-      whileTap={{ scale: 0.98 }}
-      className="w-full py-4 text-center border-2 border-primary/20 hover:border-primary hover:bg-primary hover:text-white text-primary font-bold rounded-2xl transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={e => e.target === e.currentTarget && onClose()}
     >
-      {loading ? 'Reindirizzamento...' : label}
-    </motion.button>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden"
+      >
+        {/* Header */}
+        <div className="px-7 pt-7 pb-5 border-b border-outline-variant/10">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-label uppercase tracking-[0.25em] text-primary mb-1">Acquisto piano</p>
+              <h3 className="font-serif text-xl text-on-surface">{plan.nome}</h3>
+              <p className="text-2xl font-bold text-on-surface mt-1">
+                € {plan.prezzo.toFixed(0)}
+                <span className="text-sm font-normal text-on-surface-variant ml-1">/ {plan.durata_giorni} giorni</span>
+              </p>
+            </div>
+            <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface transition-colors mt-1">
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="px-7 py-6 space-y-5">
+          <div>
+            <label className="block text-xs font-label uppercase tracking-widest text-on-surface-variant mb-2">
+              La tua email
+            </label>
+            <input
+              type="email"
+              required
+              autoFocus
+              placeholder="nome@email.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full bg-surface-container-low border border-outline-variant/50 rounded-2xl px-4 py-3.5 text-on-surface text-sm placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all"
+            />
+            <p className="text-xs text-on-surface-variant mt-2">
+              Le credenziali del tuo account verranno inviate a questo indirizzo.
+            </p>
+          </div>
+
+          {error && (
+            <p className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">{error}</p>
+          )}
+
+          <motion.button
+            whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+            type="submit"
+            disabled={loading || !email}
+            className="w-full bg-primary text-white py-4 rounded-2xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {loading
+              ? <><Loader2 size={16} className="animate-spin" /> Preparazione pagamento...</>
+              : <><ArrowRight size={16} /> Procedi al pagamento</>
+            }
+          </motion.button>
+
+          <p className="text-center text-xs text-on-surface-variant">
+            Pagamento sicuro tramite Stripe 🔒
+          </p>
+        </form>
+      </motion.div>
+    </motion.div>
   );
 }
 
-// Raggruppa i piani per frequenza_sett
+// ── Pulsante piano ────────────────────────────────────────────
+function PlanButton({ plan, label = 'Inizia ora' }: { plan: Plan; label?: string }) {
+  const [showModal, setShowModal] = useState(false);
+
+  return (
+    <>
+      <motion.button
+        onClick={() => setShowModal(true)}
+        whileTap={{ scale: 0.98 }}
+        className="w-full py-4 text-center border-2 border-primary/20 hover:border-primary hover:bg-primary hover:text-white text-primary font-bold rounded-2xl transition-all duration-300"
+      >
+        {label}
+      </motion.button>
+
+      <AnimatePresence>
+        {showModal && <CheckoutModal plan={plan} onClose={() => setShowModal(false)} />}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ── Raggruppa piani per frequenza ─────────────────────────────
 function groupByFrequenza(plans: Plan[]) {
   const groups: Record<string, Plan[]> = {};
   for (const plan of plans) {
@@ -58,8 +145,9 @@ function groupByFrequenza(plans: Plan[]) {
   return groups;
 }
 
+// ── Componente principale ─────────────────────────────────────
 export default function Pricing() {
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plans, setPlans]   = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -74,7 +162,7 @@ export default function Pricing() {
       });
   }, []);
 
-  const groups = groupByFrequenza(plans);
+  const groups     = groupByFrequenza(plans);
   const freqGroups = Object.entries(groups).filter(([k]) => k !== 'pacchetto');
   const pacchetti  = groups['pacchetto'] ?? [];
 
@@ -83,24 +171,19 @@ export default function Pricing() {
       <div className="container mx-auto px-6">
         <div className="text-center mb-20">
           <motion.span
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }}
             className="text-primary font-label tracking-[0.2em] uppercase text-sm block mb-4"
           >
             ABBONAMENTI
           </motion.span>
           <motion.h2
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             className="text-4xl md:text-5xl font-serif italic mb-6"
           >
             Unisciti ad Arcadia Lab.
           </motion.h2>
           <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             className="text-on-surface-variant max-w-xl mx-auto"
           >
             Scegli il ritmo che fa per te. Tutti gli abbonamenti danno accesso a qualsiasi delle lezioni settimanali.
@@ -110,10 +193,7 @@ export default function Pricing() {
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="flex items-center gap-3 text-on-surface-variant">
-              <svg className="animate-spin h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
+              <Loader2 className="animate-spin h-5 w-5 text-primary" />
               <span className="font-serif italic">Caricamento piani...</span>
             </div>
           </div>
@@ -125,8 +205,7 @@ export default function Pricing() {
                 {freqGroups.map(([freq, groupPlans], i) => (
                   <motion.div
                     key={freq}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                     className="bg-white p-8 md:p-10 rounded-3xl shadow-sm border border-outline-variant/10 flex flex-col hover:shadow-xl transition-all duration-500 group"
                   >
@@ -143,52 +222,40 @@ export default function Pricing() {
                       {groupPlans.map((plan) => (
                         <div key={plan.id} className="flex justify-between items-center p-4 rounded-xl hover:bg-surface-container-low transition-colors">
                           <div>
-                            <p className="font-serif text-lg">
-                              {plan.nome.split('—')[1]?.trim() ?? plan.nome}
-                            </p>
+                            <p className="font-serif text-lg">{plan.nome.split('—')[1]?.trim() ?? plan.nome}</p>
                             {plan.descrizione && (
-                              <span className="text-[10px] uppercase tracking-widest font-bold text-primary/60">
-                                {plan.descrizione}
-                              </span>
+                              <span className="text-[10px] uppercase tracking-widest font-bold text-primary/60">{plan.descrizione}</span>
                             )}
                           </div>
-                          <div className="text-right">
-                            <span className="text-2xl font-bold text-on-surface">€ {plan.prezzo.toFixed(0)}</span>
-                          </div>
+                          <span className="text-2xl font-bold text-on-surface">€ {plan.prezzo.toFixed(0)}</span>
                         </div>
                       ))}
                     </div>
 
-                    {/* Un solo bottone per il piano mensile del gruppo */}
-                    {groupPlans[0] && <PlanButton planId={groupPlans[0].id} />}
+                    <PlanButton plan={groupPlans[0]} />
                   </motion.div>
                 ))}
               </div>
             )}
 
-            {/* Pacchetti / ingressi */}
+            {/* Pacchetti */}
             {pacchetti.map((pack, i) => (
               <motion.div
                 key={pack.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.05 }}
                 className="max-w-4xl mx-auto mb-10"
               >
                 <div className="bg-primary-container/10 border-2 border-primary/10 rounded-[2.5rem] p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-primary/10 transition-colors duration-700" />
                   <div className="relative z-10 text-center md:text-left">
-                    <span className="bg-primary text-on-primary text-[10px] px-3 py-1 rounded-full uppercase font-bold tracking-widest mb-4 inline-block">
-                      Pacchetto Accesso
-                    </span>
+                    <span className="bg-primary text-on-primary text-[10px] px-3 py-1 rounded-full uppercase font-bold tracking-widest mb-4 inline-block">Pacchetto Accesso</span>
                     <h3 className="text-3xl font-serif mb-3">{pack.nome}</h3>
-                    {pack.descrizione && (
-                      <p className="text-on-surface-variant max-w-sm">{pack.descrizione}</p>
-                    )}
+                    {pack.descrizione && <p className="text-on-surface-variant max-w-sm">{pack.descrizione}</p>}
                   </div>
                   <div className="relative z-10 text-center md:text-right flex flex-col items-center md:items-end gap-4 min-w-[200px]">
                     <div className="text-5xl font-bold text-primary">€ {pack.prezzo.toFixed(0)}</div>
-                    <PlanButton planId={pack.id} label="Acquista Pacchetto" />
+                    <PlanButton plan={pack} label="Acquista Pacchetto" />
                   </div>
                 </div>
               </motion.div>
@@ -206,7 +273,7 @@ export default function Pricing() {
             <span className="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">card_membership</span>
             <p>
               <strong className="text-on-surface uppercase tracking-wider text-xs block mb-1">Tessera associativa annuale — € 20</strong>
-              Obbligatoria per l'iscrizione. Include copertura assicurativa. È richiesto il certificato medico di buona salute.
+              Obbligatoria per l'iscrizione. Include copertura assicurativa. Valida 365 giorni dall'acquisto. È richiesto il certificato medico di buona salute.
             </p>
           </div>
         </div>

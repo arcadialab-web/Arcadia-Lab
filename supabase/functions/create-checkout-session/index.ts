@@ -16,21 +16,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const TESSERA_PREZZO = 2000; // € 20.00 in centesimi
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { plan_id } = await req.json();
+    const { plan_id, email } = await req.json();
 
-    if (!plan_id) {
-      return new Response(JSON.stringify({ error: 'plan_id mancante' }), {
+    if (!plan_id || !email) {
+      return new Response(JSON.stringify({ error: 'plan_id ed email sono obbligatori' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Leggi il piano dal database
+    // 1. Leggi il piano
     const { data: plan, error: planError } = await supabase
       .from('plans')
       .select('*')
@@ -44,44 +46,82 @@ Deno.serve(async (req) => {
       });
     }
 
-    const appUrl = Deno.env.get('APP_URL') ?? 'https://arcadialab.it';
+    // 2. Controlla se l'utente esiste già
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    const existingUser = existingUsers?.users?.find(
+      u => u.email?.toLowerCase() === email.toLowerCase()
+    );
 
-    // Crea Checkout Session Stripe con prezzo dinamico (price_data)
-    // Nessun prodotto da creare su Stripe — il prezzo viene dall'admin
+    const isNewUser = !existingUser;
+
+    // 3. Controlla se l'utente esistente ha già una tessera valida
+    let hasTesseraValida = false;
+    if (!isNewUser && existingUser) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('tessera_scadenza')
+        .eq('id', existingUser.id)
+        .single();
+
+      if (profile?.tessera_scadenza) {
+        hasTesseraValida = new Date(profile.tessera_scadenza) > new Date();
+      }
+    }
+
+    const aggiungeTessera = isNewUser || !hasTesseraValida;
+
+    const appUrl = Deno.env.get('APP_URL') ?? 'https://www.arcadialab.it';
+
+    // 4. Costruisci i line items
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+      {
+        quantity: 1,
+        price_data: {
+          currency: 'eur',
+          unit_amount: Math.round(plan.prezzo * 100),
+          product_data: {
+            name: plan.nome,
+            description: plan.descrizione ?? undefined,
+          },
+        },
+      },
+    ];
+
+    // Aggiungi tessera se necessario
+    if (aggiungeTessera) {
+      lineItems.push({
+        quantity: 1,
+        price_data: {
+          currency: 'eur',
+          unit_amount: TESSERA_PREZZO,
+          product_data: {
+            name: 'Tessera Associativa Annuale',
+            description: 'Obbligatoria per l\'iscrizione. Include copertura assicurativa. Valida 365 giorni.',
+          },
+        },
+      });
+    }
+
+    // 5. Crea la Checkout Session
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
-      customer_creation: 'always',  // crea sempre un customer per poter recuperare l'email
+      customer_creation: 'always',
+      customer_email: email,   // pre-compila l'email su Stripe
       billing_address_collection: 'auto',
       locale: 'it',
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: 'eur',
-            unit_amount: Math.round(plan.prezzo * 100), // Stripe usa centesimi
-            product_data: {
-              name: plan.nome,
-              description: plan.descrizione ?? undefined,
-              metadata: {
-                plan_id: plan.id,
-                lezioni_totali: plan.lezioni_totali.toString(),
-                durata_giorni: plan.durata_giorni.toString(),
-              },
-            },
-          },
-        },
-      ],
-      // Passa plan_id nei metadata della session
+      line_items: lineItems,
       metadata: {
-        plan_id: plan.id,
-        plan_nome: plan.nome,
+        plan_id:        plan.id,
+        plan_nome:      plan.nome,
         lezioni_totali: plan.lezioni_totali.toString(),
-        durata_giorni: plan.durata_giorni.toString(),
+        durata_giorni:  plan.durata_giorni.toString(),
+        is_new_user:    isNewUser.toString(),
+        aggiunge_tessera: aggiungeTessera.toString(),
+        customer_email: email,
       },
-      // Stripe chiede l'email → verrà usata per creare l'account Supabase
-      success_url: `${appUrl}/pagamento-ok?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/#pricing`,
+      success_url: `${appUrl}/pagamento-ok?nuovo=${isNewUser ? '1' : '0'}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url:  `${appUrl}/#pricing`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
