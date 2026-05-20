@@ -1,10 +1,7 @@
-import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno';
+import Stripe from 'npm:stripe@14.21.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
-  apiVersion: '2024-06-20',
-  httpClient: Stripe.createFetchHttpClient(),
-});
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -32,6 +29,8 @@ Deno.serve(async (req) => {
       });
     }
 
+    const emailNorm = email.toLowerCase().trim();
+
     // 1. Leggi il piano
     const { data: plan, error: planError } = await supabase
       .from('plans')
@@ -46,27 +45,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2. Controlla se l'utente esiste già
-    const { data: existingUsers } = await supabase.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(
-      u => u.email?.toLowerCase() === email.toLowerCase()
-    );
+    // 2. Cerca utente tramite profiles.email (evita listUsers())
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, tessera_scadenza')
+      .eq('email', emailNorm)
+      .maybeSingle();
 
-    const isNewUser = !existingUser;
+    const isNewUser = !profile;
 
-    // 3. Controlla se l'utente esistente ha già una tessera valida
-    let hasTesseraValida = false;
-    if (!isNewUser && existingUser) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('tessera_scadenza')
-        .eq('id', existingUser.id)
-        .single();
-
-      if (profile?.tessera_scadenza) {
-        hasTesseraValida = new Date(profile.tessera_scadenza) > new Date();
-      }
-    }
+    // 3. Controlla se ha già una tessera valida
+    const hasTesseraValida = profile?.tessera_scadenza
+      ? new Date(profile.tessera_scadenza) > new Date()
+      : false;
 
     const aggiungeTessera = isNewUser || !hasTesseraValida;
 
@@ -87,7 +78,6 @@ Deno.serve(async (req) => {
       },
     ];
 
-    // Aggiungi tessera se necessario
     if (aggiungeTessera) {
       lineItems.push({
         quantity: 1,
@@ -102,23 +92,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 5. Crea la Checkout Session
+    // 5. Crea Checkout Session
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
       customer_creation: 'always',
-      customer_email: email,   // pre-compila l'email su Stripe
+      customer_email: emailNorm,
       billing_address_collection: 'auto',
       locale: 'it',
       line_items: lineItems,
       metadata: {
-        plan_id:        plan.id,
-        plan_nome:      plan.nome,
-        lezioni_totali: plan.lezioni_totali.toString(),
-        durata_giorni:  plan.durata_giorni.toString(),
-        is_new_user:    isNewUser.toString(),
+        plan_id:          plan.id,
+        plan_nome:        plan.nome,
+        lezioni_totali:   plan.lezioni_totali.toString(),
+        durata_giorni:    plan.durata_giorni.toString(),
+        is_new_user:      isNewUser.toString(),
         aggiunge_tessera: aggiungeTessera.toString(),
-        customer_email: email,
+        customer_email:   emailNorm,
       },
       success_url: `${appUrl}/pagamento-ok?nuovo=${isNewUser ? '1' : '0'}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url:  `${appUrl}/#pricing`,
