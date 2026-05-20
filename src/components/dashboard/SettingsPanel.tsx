@@ -58,7 +58,10 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
       return;
     }
     setLoading('password');
-    const { error } = await supabase.auth.updateUser({ password: passwordForm.nuova });
+    const { error } = await supabase.auth.updateUser({
+      password: passwordForm.nuova,
+      data: { must_change_password: false }, // rimuove il flag dopo il cambio
+    });
     setLoading(null);
     if (error) {
       setPasswordMsg({ type: 'error', text: error.message });

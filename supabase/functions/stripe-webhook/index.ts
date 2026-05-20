@@ -1,7 +1,5 @@
-import Stripe from 'npm:stripe@14.21.0';
+// Nessun import Stripe — verifica firma con crypto nativo di Deno
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -13,291 +11,258 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
 };
 
-// ── Template email HTML ───────────────────────────────────────
-function buildWelcomeEmail(opts: {
-  email: string;
-  planNome: string;
-  resetLink: string;
-  isNewUser: boolean;
-  aggiungeTessera: boolean;
-  tesseraScadenza: string;
-}): string {
-  const { email, planNome, resetLink, isNewUser, aggiungeTessera, tesseraScadenza } = opts;
+// ── Verifica firma Stripe con Web Crypto (nativo Deno) ────────
+async function verifyStripeSignature(body: string, sigHeader: string, secret: string): Promise<boolean> {
+  const parts     = sigHeader.split(',');
+  const timestamp = parts.find(p => p.startsWith('t='))?.slice(2);
+  const v1sigs    = parts.filter(p => p.startsWith('v1=')).map(p => p.slice(3));
 
-  return `<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Benvenuta/o in Arcadia Lab.</title>
-</head>
-<body style="margin:0;padding:0;background:#fdfbf7;font-family:'Georgia',serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdfbf7;padding:40px 16px;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+  if (!timestamp || v1sigs.length === 0) return false;
 
-        <tr>
-          <td style="background:#2b2927;padding:40px 48px;text-align:center;">
-            <p style="margin:0;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.5);font-family:sans-serif;">Arcadia Lab. Yoga</p>
-            <h1 style="margin:12px 0 0;font-size:32px;color:#ffffff;font-weight:400;font-style:italic;">
-              ${isNewUser ? 'Benvenuta/o!' : 'Abbonamento attivato!'}
-            </h1>
-          </td>
-        </tr>
+  // Tolleranza 5 minuti
+  if (Math.abs(Date.now() / 1000 - parseInt(timestamp)) > 300) return false;
 
-        <tr>
-          <td style="padding:40px 48px;">
-            <p style="margin:0 0 24px;font-size:15px;color:#2b2927;line-height:1.7;font-family:sans-serif;">
-              ${isNewUser
-                ? `Grazie per aver scelto <strong>Arcadia Lab.</strong> — siamo felici di averti con noi.<br/><br/>
-                   Abbiamo creato il tuo account con: <strong>${email}</strong>`
-                : `Grazie per aver rinnovato con <strong>Arcadia Lab.</strong><br/><br/>
-                   Il tuo piano <strong>${planNome}</strong> è ora attivo.`
-              }
-            </p>
+  const payload  = `${timestamp}.${body}`;
+  const keyData  = new TextEncoder().encode(secret);
+  const msgData  = new TextEncoder().encode(payload);
 
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f1e8;border-radius:16px;margin-bottom:24px;">
-              <tr>
-                <td style="padding:20px 24px;">
-                  <p style="margin:0 0 4px;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#5a544c;font-family:sans-serif;">Piano acquistato</p>
-                  <p style="margin:0;font-size:18px;color:#2b2927;font-weight:700;font-family:sans-serif;">${planNome}</p>
-                  ${aggiungeTessera ? `
-                  <p style="margin:8px 0 0;font-size:12px;color:#b56a56;font-family:sans-serif;">
-                    🎫 Tessera annuale inclusa — valida fino al ${tesseraScadenza}
-                  </p>` : ''}
-                </td>
-              </tr>
-            </table>
+  const key = await crypto.subtle.importKey(
+    'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sigBuf   = await crypto.subtle.sign('HMAC', key, msgData);
+  const computed = Array.from(new Uint8Array(sigBuf))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
 
-            ${isNewUser ? `
-            <p style="margin:0 0 16px;font-size:15px;color:#2b2927;line-height:1.7;font-family:sans-serif;">
-              Clicca qui sotto per <strong>impostare la tua password</strong> e accedere:
-            </p>
-            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-              <tr>
-                <td align="center">
-                  <a href="${resetLink}" style="display:inline-block;background:#b56a56;color:#ffffff;text-decoration:none;padding:16px 40px;border-radius:50px;font-size:14px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;font-family:sans-serif;">
-                    Imposta la tua password
-                  </a>
-                </td>
-              </tr>
-            </table>
-            <p style="margin:0 0 24px;font-size:12px;color:#5a544c;line-height:1.6;font-family:sans-serif;">
-              Link diretto: <a href="${resetLink}" style="color:#b56a56;word-break:break-all;">${resetLink}</a>
-            </p>
-            ` : `
-            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-              <tr>
-                <td align="center">
-                  <a href="https://www.arcadialab.it/auth" style="display:inline-block;background:#b56a56;color:#ffffff;text-decoration:none;padding:16px 40px;border-radius:50px;font-size:14px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;font-family:sans-serif;">
-                    Accedi alla tua area personale
-                  </a>
-                </td>
-              </tr>
-            </table>
-            `}
-
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f0;border:1px solid #f0d4c4;border-radius:12px;margin-bottom:32px;">
-              <tr>
-                <td style="padding:16px 20px;">
-                  <p style="margin:0;font-size:13px;color:#5a544c;line-height:1.6;font-family:sans-serif;">
-                    <strong style="color:#b56a56;">📧 Non trovi l'email?</strong><br/>
-                    Controlla <strong>Spam</strong>, <strong>Promozioni</strong> o <strong>Posta indesiderata</strong>.
-                    Aggiungi <em>arcadialabyoga@gmail.com</em> ai tuoi contatti.
-                  </p>
-                </td>
-              </tr>
-            </table>
-
-            <p style="margin:0;font-size:14px;color:#5a544c;line-height:1.7;font-family:sans-serif;">
-              Per qualsiasi dubbio:<br/>
-              <a href="mailto:arcadialabyoga@gmail.com" style="color:#b56a56;">arcadialabyoga@gmail.com</a>
-            </p>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="background:#f5f1e8;padding:24px 48px;text-align:center;">
-            <p style="margin:0;font-size:12px;color:#a39c90;font-family:sans-serif;font-style:italic;">
-              Arcadia Lab. Yoga · Respira dove l'anima trova casa.
-            </p>
-            <p style="margin:8px 0 0;font-size:11px;color:#a39c90;font-family:sans-serif;">
-              <a href="https://www.arcadialab.it" style="color:#b56a56;text-decoration:none;">www.arcadialab.it</a>
-            </p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  return v1sigs.some(s => s === computed);
 }
 
-// ── Invia email via Resend ────────────────────────────────────
+// ── Email HTML ────────────────────────────────────────────────
+function buildEmail(opts: {
+  email: string; planNome: string; tempPassword: string;
+  isNewUser: boolean; aggiungeTessera: boolean; tesseraScadenza: string;
+}): string {
+  const { email, planNome, tempPassword, isNewUser, aggiungeTessera, tesseraScadenza } = opts;
+  return `<!DOCTYPE html>
+<html lang="it">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
+<body style="margin:0;padding:0;background:#fdfbf7;font-family:Georgia,serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#fdfbf7;padding:40px 16px;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+  <tr><td style="background:#2b2927;padding:36px 48px;text-align:center;">
+    <p style="margin:0;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.5);font-family:sans-serif;">Arcadia Lab. Yoga</p>
+    <h1 style="margin:10px 0 0;font-size:30px;color:#fff;font-weight:400;font-style:italic;">${isNewUser ? 'Benvenuta/o!' : 'Abbonamento attivato!'}</h1>
+  </td></tr>
+  <tr><td style="padding:36px 48px;">
+    <p style="margin:0 0 20px;font-size:15px;color:#2b2927;line-height:1.7;font-family:sans-serif;">
+      ${isNewUser
+        ? `Grazie per aver scelto <strong>Arcadia Lab.</strong><br/>Abbiamo creato il tuo account con: <strong>${email}</strong>`
+        : `Grazie per aver rinnovato con <strong>Arcadia Lab.</strong><br/>Il piano <strong>${planNome}</strong> è ora attivo.`}
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f1e8;border-radius:16px;margin-bottom:24px;">
+      <tr><td style="padding:18px 24px;">
+        <p style="margin:0 0 4px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#5a544c;font-family:sans-serif;">Piano acquistato</p>
+        <p style="margin:0;font-size:17px;color:#2b2927;font-weight:700;font-family:sans-serif;">${planNome}</p>
+        ${aggiungeTessera ? `<p style="margin:8px 0 0;font-size:12px;color:#b56a56;font-family:sans-serif;">🎫 Tessera annuale inclusa — valida fino al ${tesseraScadenza}</p>` : ''}
+      </td></tr>
+    </table>
+    ${isNewUser ? `
+    <p style="margin:0 0 14px;font-size:15px;color:#2b2927;line-height:1.7;font-family:sans-serif;">
+      Abbiamo creato le tue credenziali di accesso temporanee.<br/>
+      Al primo accesso ti verrà chiesto di cambiare la password.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f7f0;border:1px solid #c8e0c8;border-radius:16px;margin-bottom:20px;">
+      <tr><td style="padding:20px 24px;">
+        <p style="margin:0 0 12px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#5a544c;font-family:sans-serif;">Le tue credenziali di accesso</p>
+        <p style="margin:0 0 8px;font-size:14px;color:#2b2927;font-family:sans-serif;"><strong>Email:</strong> ${email}</p>
+        <p style="margin:0 0 16px;font-size:14px;color:#2b2927;font-family:sans-serif;"><strong>Password temporanea:</strong> <span style="font-family:monospace;background:#fff;padding:4px 10px;border-radius:6px;font-size:16px;letter-spacing:.1em;color:#b56a56;">${tempPassword}</span></p>
+        <p style="margin:0;font-size:11px;color:#5a544c;font-family:sans-serif;">⚠️ Cambia la password al primo accesso per sicurezza.</p>
+      </td></tr>
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr><td align="center">
+      <a href="https://www.arcadialab.it/auth" style="display:inline-block;background:#b56a56;color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:sans-serif;">Accedi ora</a>
+    </td></tr></table>
+    ` : `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr><td align="center">
+      <a href="https://www.arcadialab.it/auth" style="display:inline-block;background:#b56a56;color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:sans-serif;">Accedi alla tua area personale</a>
+    </td></tr></table>
+    `}
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f0;border:1px solid #f0d4c4;border-radius:12px;margin-bottom:28px;">
+      <tr><td style="padding:14px 18px;">
+        <p style="margin:0;font-size:13px;color:#5a544c;line-height:1.6;font-family:sans-serif;">
+          <strong style="color:#b56a56;">📧 Non trovi l'email?</strong><br/>
+          Controlla <strong>Spam</strong>, <strong>Promozioni</strong> o <strong>Posta indesiderata</strong>.
+        </p>
+      </td></tr>
+    </table>
+    <p style="margin:0;font-size:13px;color:#5a544c;font-family:sans-serif;">Dubbi? <a href="mailto:arcadialabyoga@gmail.com" style="color:#b56a56;">arcadialabyoga@gmail.com</a></p>
+  </td></tr>
+  <tr><td style="background:#f5f1e8;padding:20px 48px;text-align:center;">
+    <p style="margin:0;font-size:12px;color:#a39c90;font-family:sans-serif;font-style:italic;">Arcadia Lab. Yoga · <a href="https://www.arcadialab.it" style="color:#b56a56;text-decoration:none;">www.arcadialab.it</a></p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>`;
+}
+
+// ── Resend ────────────────────────────────────────────────────
 async function sendEmail(to: string, subject: string, html: string) {
-  const resendKey = Deno.env.get('RESEND_API_KEY');
-  if (!resendKey) {
-    console.warn('RESEND_API_KEY non configurata — email non inviata');
-    return;
-  }
+  const key = Deno.env.get('RESEND_API_KEY');
+  if (!key) { console.warn('RESEND_API_KEY mancante'); return; }
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ from: 'Arcadia Lab. <noreply@arcadialab.it>', to: [to], subject, html }),
   });
   if (!res.ok) console.error('Errore Resend:', await res.text());
   else console.log('✉️ Email inviata a', to);
 }
 
-// ── Webhook handler ───────────────────────────────────────────
+// ── Handler principale ────────────────────────────────────────
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
-  const signature     = req.headers.get('stripe-signature');
-  const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
-  const body          = await req.text();
+  const body      = await req.text();
+  const sigHeader = req.headers.get('stripe-signature') ?? '';
+  const secret    = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '';
 
-  let event: Stripe.Event;
-  try {
-    event = await stripe.webhooks.constructEventAsync(body, signature!, webhookSecret);
-  } catch (err) {
-    console.error('Firma webhook non valida:', err);
+  const valid = await verifyStripeSignature(body, sigHeader, secret);
+  if (!valid) {
+    console.error('Firma Stripe non valida');
     return new Response('Firma non valida', { status: 400 });
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session;
+  const event = JSON.parse(body);
+  console.log('Evento ricevuto:', event.type);
 
-    const customerEmail   = session.customer_details?.email ?? session.metadata?.customer_email;
-    const planId          = session.metadata?.plan_id;
-    const lezioni         = parseInt(session.metadata?.lezioni_totali ?? '0');
-    const durata          = parseInt(session.metadata?.durata_giorni  ?? '30');
-    const isNewUser       = session.metadata?.is_new_user === 'true';
-    const aggiungeTessera = session.metadata?.aggiunge_tessera === 'true';
-    const stripeCustomerId = typeof session.customer === 'string' ? session.customer : null;
-    const planNome        = session.metadata?.plan_nome ?? 'Abbonamento';
-
-    if (!customerEmail || !planId) {
-      console.error('Dati mancanti:', { customerEmail, planId });
-      return new Response('Dati mancanti', { status: 400 });
-    }
-
-    try {
-      let userId: string;
-      let resetLink = 'https://www.arcadialab.it/auth';
-
-      if (isNewUser) {
-        // Crea account Supabase
-        const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-          email: customerEmail,
-          email_confirm: true,
-          user_metadata: { stripe_customer_id: stripeCustomerId },
-        });
-
-        if (createError || !newUser.user) {
-          console.error('Errore creazione utente:', createError);
-          return new Response('Errore creazione utente', { status: 500 });
-        }
-
-        userId = newUser.user.id;
-
-        // Aggiorna profilo
-        await supabase.from('profiles').update({
-          stripe_customer_id: stripeCustomerId,
-          email: customerEmail,
-        }).eq('id', userId);
-
-        // Genera link reset password
-        const { data: linkData } = await supabase.auth.admin.generateLink({
-          type: 'recovery',
-          email: customerEmail,
-          options: { redirectTo: 'https://www.arcadialab.it/auth' },
-        });
-        if (linkData?.properties?.action_link) {
-          resetLink = linkData.properties.action_link;
-        }
-
-      } else {
-        // Utente esistente — cerca tramite profiles.email
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', customerEmail.toLowerCase())
-          .single();
-
-        if (!profile) {
-          console.error('Profilo non trovato per:', customerEmail);
-          return new Response('Utente non trovato', { status: 404 });
-        }
-        userId = profile.id;
-      }
-
-      const oggi = new Date();
-
-      // Tessera annuale
-      if (aggiungeTessera) {
-        const scadenzaTessera = new Date(oggi);
-        scadenzaTessera.setDate(scadenzaTessera.getDate() + 365);
-        await supabase.from('profiles')
-          .update({ tessera_scadenza: scadenzaTessera.toISOString().split('T')[0] })
-          .eq('id', userId);
-      }
-
-      // Data scadenza tessera formattata
-      const { data: profilo } = await supabase
-        .from('profiles').select('tessera_scadenza').eq('id', userId).single();
-      const tesseraScadenzaStr = profilo?.tessera_scadenza
-        ? new Date(profilo.tessera_scadenza).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
-        : '';
-
-      // Disattiva abbonamenti precedenti
-      await supabase.from('subscriptions')
-        .update({ stato: 'scaduto' })
-        .eq('user_id', userId)
-        .eq('stato', 'attivo');
-
-      // Crea nuovo abbonamento
-      const dataScadenza = new Date(oggi);
-      dataScadenza.setDate(dataScadenza.getDate() + durata);
-
-      const { error: subError } = await supabase.from('subscriptions').insert({
-        user_id:            userId,
-        plan_id:            planId,
-        lezioni_totali:     lezioni,
-        lezioni_usate:      0,
-        data_inizio:        oggi.toISOString().split('T')[0],
-        data_scadenza:      dataScadenza.toISOString().split('T')[0],
-        stato:              'attivo',
-        prezzo_pagato:      session.amount_total ? session.amount_total / 100 : null,
-        stripe_payment_id:  session.payment_intent as string ?? null,
-        stripe_customer_id: stripeCustomerId,
-      });
-
-      if (subError) {
-        console.error('Errore abbonamento:', subError);
-        return new Response('Errore creazione abbonamento', { status: 500 });
-      }
-
-      // Invia email
-      const html = buildWelcomeEmail({ email: customerEmail, planNome, resetLink, isNewUser, aggiungeTessera, tesseraScadenza: tesseraScadenzaStr });
-      const subject = isNewUser
-        ? `Benvenuta/o in Arcadia Lab. — Il tuo account è pronto 🧘`
-        : `Arcadia Lab. — Il tuo abbonamento "${planNome}" è attivo`;
-
-      await sendEmail(customerEmail, subject, html);
-      console.log(`✅ Completato per ${customerEmail}`);
-
-    } catch (err) {
-      console.error('Errore gestione webhook:', err);
-      return new Response('Errore interno', { status: 500 });
-    }
+  if (event.type !== 'checkout.session.completed') {
+    return new Response(JSON.stringify({ received: true }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
-  return new Response(JSON.stringify({ received: true }), {
-    status: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  const session         = event.data.object;
+  const customerEmail   = session.customer_details?.email ?? session.metadata?.customer_email;
+  const planId          = session.metadata?.plan_id;
+  const lezioni         = parseInt(session.metadata?.lezioni_totali ?? '0');
+  const durata          = parseInt(session.metadata?.durata_giorni  ?? '30');
+  const aggiungeTessera = session.metadata?.aggiunge_tessera === 'true';
+  const stripeCustomerId = session.customer ?? null;
+  const planNome        = session.metadata?.plan_nome ?? 'Abbonamento';
+
+  if (!customerEmail || !planId) {
+    console.error('Dati mancanti:', { customerEmail, planId });
+    return new Response('Dati mancanti', { status: 400 });
+  }
+
+  console.log('Elaborazione per:', customerEmail);
+
+  try {
+    let userId: string;
+    let isNewUser = false;
+    let tempPassword = '';
+
+    // Genera password temporanea leggibile
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    tempPassword = Array.from(crypto.getRandomValues(new Uint8Array(10)))
+      .map(b => chars[b % chars.length]).join('');
+
+    // Cerca se l'utente esiste tramite il profilo
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', customerEmail.toLowerCase())
+      .maybeSingle();
+
+    if (profile) {
+      userId    = profile.id;
+      isNewUser = false;
+      tempPassword = ''; // utente esistente, non mandiamo nuova password
+      console.log('Utente esistente:', userId);
+    } else {
+      // Crea nuovo utente con password temporanea
+      isNewUser = true;
+      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+        email:            customerEmail,
+        password:         tempPassword,
+        email_confirm:    true,
+        user_metadata:    { stripe_customer_id: stripeCustomerId, must_change_password: true },
+      });
+
+      if (createError || !newUser?.user) {
+        console.error('createUser error:', JSON.stringify(createError));
+        return new Response('Errore creazione utente: ' + createError?.message, { status: 500 });
+      }
+
+      userId = newUser.user.id;
+      console.log('Nuovo utente creato:', userId);
+    }
+
+    // Assicura che il profilo esista (nel caso il trigger non l'abbia creato)
+    await supabase.from('profiles').upsert(
+      { id: userId, email: customerEmail, stripe_customer_id: stripeCustomerId },
+      { onConflict: 'id' }
+    );
+    console.log('Profilo assicurato per:', userId);
+
+    // Tessera
+    const oggi = new Date();
+    if (aggiungeTessera) {
+      const scad = new Date(oggi);
+      scad.setDate(scad.getDate() + 365);
+      await supabase.from('profiles').update({ tessera_scadenza: scad.toISOString().split('T')[0] }).eq('id', userId);
+      console.log('Tessera aggiunta');
+    }
+
+    // Data tessera per email
+    const { data: profAggiornato } = await supabase.from('profiles').select('tessera_scadenza').eq('id', userId).single();
+    const tesseraStr = profAggiornato?.tessera_scadenza
+      ? new Date(profAggiornato.tessera_scadenza).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
+      : '';
+
+    // Disattiva abbonamenti precedenti
+    await supabase.from('subscriptions').update({ stato: 'scaduto' }).eq('user_id', userId).eq('stato', 'attivo');
+
+    // Crea abbonamento
+    const scadAbb = new Date(oggi);
+    scadAbb.setDate(scadAbb.getDate() + durata);
+
+    const { error: subErr } = await supabase.from('subscriptions').insert({
+      user_id:            userId,
+      plan_id:            planId,
+      lezioni_totali:     lezioni,
+      lezioni_usate:      0,
+      data_inizio:        oggi.toISOString().split('T')[0],
+      data_scadenza:      scadAbb.toISOString().split('T')[0],
+      stato:              'attivo',
+      prezzo_pagato:      session.amount_total ? session.amount_total / 100 : null,
+      stripe_payment_id:  session.payment_intent ?? null,
+      stripe_customer_id: stripeCustomerId,
+    });
+
+    if (subErr) {
+      console.error('Errore abbonamento:', JSON.stringify(subErr));
+      return new Response('Errore abbonamento: ' + subErr.message, { status: 500 });
+    }
+
+    console.log('Abbonamento creato');
+
+    // Email
+    const html = buildEmail({ email: customerEmail, planNome, tempPassword, isNewUser, aggiungeTessera, tesseraScadenza: tesseraStr });
+    const subject = isNewUser
+      ? `Benvenuta/o in Arcadia Lab. — Il tuo account è pronto 🧘`
+      : `Arcadia Lab. — Il tuo abbonamento "${planNome}" è attivo`;
+    await sendEmail(customerEmail, subject, html);
+
+    console.log('✅ Tutto completato per', customerEmail);
+
+    return new Response(JSON.stringify({ received: true }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (err) {
+    console.error('Errore non gestito:', err instanceof Error ? err.message : String(err));
+    return new Response('Errore interno', { status: 500 });
+  }
 });

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface NavItem {
@@ -148,6 +148,22 @@ export default function DashboardLayout({ navItems, activeSection, onSectionChan
             </Link>
           </div>
         </header>
+
+        {/* Banner cambio password obbligatorio */}
+        {user?.user_metadata?.must_change_password && (
+          <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center gap-3">
+            <ShieldAlert size={18} className="text-amber-600 flex-shrink-0" strokeWidth={1.5} />
+            <p className="text-sm text-amber-800 flex-1">
+              <strong>Cambia la password temporanea</strong> prima di continuare — vai in{' '}
+              <button
+                onClick={() => onSectionChange('settings')}
+                className="underline font-bold hover:text-amber-900 transition-colors"
+              >
+                Impostazioni → Sicurezza
+              </button>
+            </p>
+          </div>
+        )}
 
         {/* Page content */}
         <main className="flex-1 px-6 py-8 max-w-7xl w-full mx-auto">
