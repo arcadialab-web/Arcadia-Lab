@@ -113,7 +113,40 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   );
 }
 
-// ── Pulsante piano ────────────────────────────────────────────
+// ── Riga piano con bottone individuale ───────────────────────
+function PlanRow({ plan }: { plan: Plan }) {
+  const [showModal, setShowModal] = useState(false);
+  const durataNome = plan.nome.split('—')[1]?.trim() ?? plan.nome;
+
+  return (
+    <>
+      <div className="flex items-center justify-between p-4 rounded-2xl border border-outline-variant/20 hover:border-primary/30 hover:bg-surface-container-low transition-all group/row">
+        <div className="min-w-0">
+          <p className="font-serif text-base text-on-surface">{durataNome}</p>
+          {plan.descrizione && (
+            <p className="text-[10px] uppercase tracking-widest font-bold text-primary/60 mt-0.5">{plan.descrizione}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+          <span className="text-xl font-bold text-on-surface">€ {plan.prezzo.toFixed(0)}</span>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowModal(true)}
+            className="bg-primary text-white text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all shadow-sm"
+          >
+            Scegli
+          </motion.button>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {showModal && <CheckoutModal plan={plan} onClose={() => setShowModal(false)} />}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ── Pulsante piano (usato per i pacchetti) ────────────────────
 function PlanButton({ plan, label = 'Inizia ora' }: { plan: Plan; label?: string }) {
   const [showModal, setShowModal] = useState(false);
 
@@ -218,21 +251,11 @@ export default function Pricing() {
                       </h3>
                     </div>
 
-                    <div className="space-y-4 mb-12 flex-grow">
+                    <div className="space-y-3 mb-8 flex-grow">
                       {groupPlans.map((plan) => (
-                        <div key={plan.id} className="flex justify-between items-center p-4 rounded-xl hover:bg-surface-container-low transition-colors">
-                          <div>
-                            <p className="font-serif text-lg">{plan.nome.split('—')[1]?.trim() ?? plan.nome}</p>
-                            {plan.descrizione && (
-                              <span className="text-[10px] uppercase tracking-widest font-bold text-primary/60">{plan.descrizione}</span>
-                            )}
-                          </div>
-                          <span className="text-2xl font-bold text-on-surface">€ {plan.prezzo.toFixed(0)}</span>
-                        </div>
+                        <PlanRow key={plan.id} plan={plan} />
                       ))}
                     </div>
-
-                    <PlanButton plan={groupPlans[0]} />
                   </motion.div>
                 ))}
               </div>
