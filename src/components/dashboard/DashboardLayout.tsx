@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { LogOut, Menu, X, ShieldAlert } from 'lucide-react';
+import { LogOut, Menu, X, ShieldAlert, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 interface NavItem {
   id: string;
@@ -20,7 +21,22 @@ interface Props {
 
 export default function DashboardLayout({ navItems, activeSection, onSectionChange, children, isAdmin }: Props) {
   const { user, signOut } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen]               = useState(false);
+  const [prenotazioniSbloccate, setPrenotazioni]    = useState<boolean | null>(null);
+  const [hasActiveSub, setHasActiveSub]             = useState(false);
+
+  useEffect(() => {
+    if (!user || isAdmin) return;
+    Promise.all([
+      supabase.from('profiles').select('prenotazioni_sbloccate').eq('id', user.id).single(),
+      supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('stato', 'attivo'),
+    ]).then(([{ data: p }, { count }]) => {
+      setPrenotazioni(p?.prenotazioni_sbloccate ?? false);
+      setHasActiveSub((count ?? 0) > 0);
+    });
+  }, [user, isAdmin]);
+
+  const mostraBannerCertificato = !isAdmin && hasActiveSub && prenotazioniSbloccate === false;
 
   const activeLabel = navItems.find(n => n.id === activeSection)?.label ?? '';
 
@@ -161,6 +177,20 @@ export default function DashboardLayout({ navItems, activeSection, onSectionChan
               >
                 Impostazioni → Sicurezza
               </button>
+            </p>
+          </div>
+        )}
+
+        {/* Banner certificato medico */}
+        {mostraBannerCertificato && (
+          <div className="bg-blue-50 border-b border-blue-200 px-6 py-3 flex items-center gap-3">
+            <FileText size={18} className="text-blue-600 flex-shrink-0" strokeWidth={1.5} />
+            <p className="text-sm text-blue-800 flex-1">
+              <strong>Certificato medico richiesto</strong> — Per sbloccare le prenotazioni, invia il tuo certificato medico di buona salute a{' '}
+              <a href="mailto:arcadialabyoga@gmail.com" className="font-bold underline hover:text-blue-900">
+                arcadialabyoga@gmail.com
+              </a>
+              . L'admin provvederà ad abilitare le prenotazioni una volta ricevuto.
             </p>
           </div>
         )}
