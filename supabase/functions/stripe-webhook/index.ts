@@ -322,9 +322,20 @@ Deno.serve(async (req) => {
       console.log('Nuovo utente creato:', userId);
     }
 
+    const nomeUtente     = session.metadata?.nome    ?? '';
+    const cognomeUtente  = session.metadata?.cognome  ?? '';
+    const telefonoUtente = session.metadata?.telefono ?? '';
+
     // Assicura che il profilo esista (nel caso il trigger non l'abbia creato)
     await supabase.from('profiles').upsert(
-      { id: userId, email: customerEmail, stripe_customer_id: stripeCustomerId },
+      {
+        id: userId,
+        email: customerEmail,
+        stripe_customer_id: stripeCustomerId,
+        ...(nomeUtente    && { nome:     nomeUtente }),
+        ...(cognomeUtente && { cognome:  cognomeUtente }),
+        ...(telefonoUtente && { telefono: telefonoUtente }),
+      },
       { onConflict: 'id' }
     );
     console.log('Profilo assicurato per:', userId);

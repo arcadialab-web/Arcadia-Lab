@@ -16,19 +16,26 @@ interface Plan {
 
 // ── Modal email pre-checkout ──────────────────────────────────
 function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
-  const [email, setEmail]   = useState('');
+  const [form, setForm] = useState({ nome: '', cognome: '', email: '', telefono: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!email) return;
     setLoading(true);
     setError('');
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke('create-checkout-session', {
-        body: { plan_id: plan.id, email: email.toLowerCase().trim() },
+        body: {
+          plan_id:  plan.id,
+          email:    form.email.toLowerCase().trim(),
+          nome:     form.nome.trim(),
+          cognome:  form.cognome.trim(),
+          telefono: form.telefono.trim(),
+        },
       });
       if (fnError || !data?.url) throw new Error('Errore nella creazione del pagamento');
       window.location.href = data.url;
@@ -38,54 +45,64 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
     }
   };
 
+  const inp = 'w-full bg-surface-container-low border border-outline-variant/50 rounded-2xl px-4 py-3.5 text-on-surface text-sm placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all';
+  const lbl = 'block text-xs font-label uppercase tracking-widest text-on-surface-variant mb-2';
+
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.96, y: 24 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden"
+        exit={{ opacity: 0, scale: 0.96, y: 16 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+        className="bg-white w-full max-w-md mx-4 sm:mx-auto rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]"
       >
-        {/* Header */}
-        <div className="px-7 pt-7 pb-5 border-b border-outline-variant/10">
-          <div className="flex items-start justify-between">
+        {/* Header fisso */}
+        <div className="px-6 pt-6 pb-4 border-b border-outline-variant/10 flex-shrink-0">
+          <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-label uppercase tracking-[0.25em] text-primary mb-1">Acquisto piano</p>
-              <h3 className="font-serif text-xl text-on-surface">{plan.nome}</h3>
+              <p className="text-[10px] font-label uppercase tracking-[0.25em] text-primary mb-1">Acquisto piano</p>
+              <h3 className="font-serif text-lg leading-tight text-on-surface">{plan.nome}</h3>
               <p className="text-2xl font-bold text-on-surface mt-1">
                 € {plan.prezzo.toFixed(0)}
                 <span className="text-sm font-normal text-on-surface-variant ml-1">/ {plan.durata_giorni} giorni</span>
               </p>
             </div>
-            <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface transition-colors mt-1">
-              <X size={20} />
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant hover:text-on-surface transition-colors"
+            >
+              <X size={18} />
             </button>
           </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="px-7 py-6 space-y-5">
+        {/* Form scrollabile su schermi piccoli */}
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Nome *</label>
+              <input className={inp} required autoFocus type="text" placeholder="Es. Giulia" value={form.nome} onChange={e => set('nome', e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Cognome</label>
+              <input className={inp} type="text" placeholder="Es. Rossi" value={form.cognome} onChange={e => set('cognome', e.target.value)} />
+            </div>
+          </div>
+
           <div>
-            <label className="block text-xs font-label uppercase tracking-widest text-on-surface-variant mb-2">
-              La tua email
-            </label>
-            <input
-              type="email"
-              required
-              autoFocus
-              placeholder="nome@email.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="w-full bg-surface-container-low border border-outline-variant/50 rounded-2xl px-4 py-3.5 text-on-surface text-sm placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all"
-            />
-            <p className="text-xs text-on-surface-variant mt-2">
-              Le credenziali del tuo account verranno inviate a questo indirizzo.
-            </p>
+            <label className={lbl}>Email *</label>
+            <input className={inp} required type="email" inputMode="email" autoComplete="email" placeholder="nome@email.com" value={form.email} onChange={e => set('email', e.target.value)} />
+            <p className="text-xs text-on-surface-variant mt-1.5">Le credenziali del tuo account verranno inviate qui.</p>
+          </div>
+
+          <div>
+            <label className={lbl}>Telefono *</label>
+            <input className={inp} required type="tel" inputMode="tel" autoComplete="tel" placeholder="+39 333 000 0000" value={form.telefono} onChange={e => set('telefono', e.target.value)} />
           </div>
 
           {error && (
@@ -93,10 +110,10 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
           )}
 
           <motion.button
-            whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: 0.97 }}
             type="submit"
-            disabled={loading || !email}
-            className="w-full bg-primary text-white py-4 rounded-2xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            disabled={loading || !form.email || !form.nome || !form.telefono}
+            className="w-full bg-primary text-white py-4 rounded-2xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading
               ? <><Loader2 size={16} className="animate-spin" /> Preparazione pagamento...</>
@@ -104,7 +121,7 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
             }
           </motion.button>
 
-          <p className="text-center text-xs text-on-surface-variant">
+          <p className="text-center text-xs text-on-surface-variant pb-1">
             Pagamento sicuro tramite Stripe 🔒
           </p>
         </form>

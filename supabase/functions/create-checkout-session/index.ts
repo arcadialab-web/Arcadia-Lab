@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { plan_id, email } = await req.json();
+    const { plan_id, email, nome, cognome, telefono } = await req.json();
 
     if (!plan_id || !email) {
       return new Response(JSON.stringify({ error: 'plan_id ed email sono obbligatori' }), {
@@ -92,13 +92,35 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 5. Crea Checkout Session
+    // 5. Crea o aggiorna customer Stripe con nome completo
+    //    così il checkout Stripe pre-compila email + nome
+    const nomeCompleto = [nome, cognome].filter(Boolean).join(' ').trim();
+
+    let stripeCustomerId: string | undefined;
+
+    // Cerca customer esistente per email
+    const existing = await stripe.customers.list({ email: emailNorm, limit: 1 });
+    if (existing.data.length > 0) {
+      const updated = await stripe.customers.update(existing.data[0].id, {
+        name:  nomeCompleto || undefined,
+        phone: telefono || undefined,
+      });
+      stripeCustomerId = updated.id;
+    } else {
+      const created = await stripe.customers.create({
+        email: emailNorm,
+        name:  nomeCompleto || undefined,
+        phone: telefono || undefined,
+      });
+      stripeCustomerId = created.id;
+    }
+
+    // 6. Crea Checkout Session
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
-      customer_creation: 'always',
-      customer_email: emailNorm,
-      billing_address_collection: 'auto',
+      customer: stripeCustomerId,
+      billing_address_collection: 'required',
       locale: 'it',
       line_items: lineItems,
       metadata: {
@@ -109,6 +131,9 @@ Deno.serve(async (req) => {
         is_new_user:      isNewUser.toString(),
         aggiunge_tessera: aggiungeTessera.toString(),
         customer_email:   emailNorm,
+        nome:             nome ?? '',
+        cognome:          cognome ?? '',
+        telefono:         telefono ?? '',
       },
       success_url: `${appUrl}/pagamento-ok?nuovo=${isNewUser ? '1' : '0'}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url:  `${appUrl}/#pricing`,
