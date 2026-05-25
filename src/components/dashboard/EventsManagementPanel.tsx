@@ -329,14 +329,15 @@ function ParticipantsPanel({ event, onClose }: { event: SpecialEvent; onClose: (
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={e => e.target === e.currentTarget && onClose()}
     >
       <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 40 }}
-        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="bg-surface w-full sm:max-w-3xl rounded-t-[1.5rem] sm:rounded-[1.5rem] shadow-2xl flex flex-col max-h-[95dvh] sm:max-h-[90vh]"
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="bg-surface w-full max-w-3xl rounded-[1.5rem] shadow-2xl flex flex-col max-h-[90dvh]"
       >
         {/* Header */}
         <div className="flex items-start justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-outline-variant/20 flex-shrink-0">
