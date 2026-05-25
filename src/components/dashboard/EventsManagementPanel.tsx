@@ -414,15 +414,17 @@ function ParticipantsPanel({ event, onClose }: { event: SpecialEvent; onClose: (
                       <div className="flex items-center gap-1.5 flex-shrink-0 ml-3">
                         {t.is_abbonato && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(181,106,86,0.12)', color: '#b56a56' }}>Abb.</span>}
                         <span className="text-[11px] font-bold text-on-surface-variant">€ {(t.prezzo_pagato || 0).toFixed(0)}</span>
-                        <button onClick={() => setStato(t.id, t.stato === 'presente' ? 'confermato' : 'presente')}
-                          className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-all ${t.stato === 'presente' ? 'bg-green-100 text-green-700' : 'bg-surface-container text-on-surface-variant hover:bg-green-100 hover:text-green-700'}`}
+                        <button
+                          onClick={() => setStato(t.id, t.stato === 'presente' ? 'confermato' : 'presente')}
+                          className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-all border ${t.stato === 'presente' ? 'bg-green-500 text-white border-green-500' : 'bg-white border-outline-variant/40 text-on-surface-variant hover:bg-green-50 hover:border-green-400 hover:text-green-700'}`}
                         >
-                          ✓
+                          {t.stato === 'presente' ? '✓ Presente' : 'Presente'}
                         </button>
-                        <button onClick={() => setStato(t.id, t.stato === 'assente' ? 'confermato' : 'assente')}
-                          className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-all ${t.stato === 'assente' ? 'bg-red-100 text-red-600' : 'bg-surface-container text-on-surface-variant hover:bg-red-100 hover:text-red-500'}`}
+                        <button
+                          onClick={() => setStato(t.id, t.stato === 'assente' ? 'confermato' : 'assente')}
+                          className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-all border ${t.stato === 'assente' ? 'bg-red-500 text-white border-red-500' : 'bg-white border-outline-variant/40 text-on-surface-variant hover:bg-red-50 hover:border-red-400 hover:text-red-600'}`}
                         >
-                          ✗
+                          {t.stato === 'assente' ? '✗ Assente' : 'Assente'}
                         </button>
                       </div>
                     </div>
