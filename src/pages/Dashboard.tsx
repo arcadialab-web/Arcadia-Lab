@@ -52,7 +52,7 @@ function UsersPanel() {
   const load = () => {
     supabase
       .from('profiles')
-      .select('id, nome, cognome, email, created_at, role, prenotazioni_sbloccate')
+      .select('id, nome, cognome, email, created_at, role, prenotazioni_sbloccate, tessera_scadenza, subscriptions(data_scadenza, stato)')
       .order('created_at', { ascending: false })
       .then(({ data }) => { setUtenti(data || []); setLoading(false); });
   };
@@ -77,17 +77,25 @@ function UsersPanel() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-outline-variant/20">
-                {['Utente', 'Iscrizione', 'Ruolo', 'Prenotazioni'].map(h => (
+                {['Utente', 'Iscrizione', 'Scad. Abbonamento', 'Scad. Tessera', 'Ruolo', 'Prenotazioni'].map(h => (
                   <th key={h} className="text-left px-5 py-4 text-[10px] font-label uppercase tracking-widest text-on-surface-variant">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {utenti.length === 0 ? (
-                <tr><td colSpan={4} className="text-center py-12 font-serif italic text-on-surface-variant">Nessun utente registrato</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 font-serif italic text-on-surface-variant">Nessun utente registrato</td></tr>
               ) : utenti.map((u) => {
                 const displayName = u.nome ? `${u.nome} ${u.cognome || ''}`.trim() : (u.email ?? 'Utente');
                 const isAdmin = u.role === 'admin';
+                const subAttivo = (u.subscriptions ?? []).find((s: any) => s.stato === 'attivo');
+                const scadAbb = subAttivo?.data_scadenza ? new Date(subAttivo.data_scadenza) : null;
+                const scadTessera = u.tessera_scadenza ? new Date(u.tessera_scadenza) : null;
+                const oggi = new Date(); oggi.setHours(0,0,0,0);
+                const giorniAbb = scadAbb ? Math.ceil((scadAbb.getTime() - oggi.getTime()) / 86400000) : null;
+                const giorniTess = scadTessera ? Math.ceil((scadTessera.getTime() - oggi.getTime()) / 86400000) : null;
+                const fmtData = (d: Date) => d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+                const scadClass = (giorni: number | null) => giorni === null ? 'text-on-surface-variant' : giorni <= 3 ? 'text-red-600 font-bold' : giorni <= 7 ? 'text-amber-600 font-semibold' : 'text-on-surface-variant';
                 return (
                   <tr key={u.id} className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container transition-colors">
                     <td className="px-5 py-4">
@@ -103,6 +111,26 @@ function UsersPanel() {
                     </td>
                     <td className="px-5 py-4 text-sm text-on-surface-variant">
                       {u.created_at ? new Date(u.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className={`text-sm ${scadClass(giorniAbb)}`}>
+                        {scadAbb ? fmtData(scadAbb) : '—'}
+                      </span>
+                      {giorniAbb !== null && giorniAbb <= 7 && (
+                        <p className={`text-xs mt-0.5 ${giorniAbb <= 3 ? 'text-red-500' : 'text-amber-500'}`}>
+                          {giorniAbb <= 0 ? 'Scaduto' : `tra ${giorniAbb}g`}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className={`text-sm ${scadClass(giorniTess)}`}>
+                        {scadTessera ? fmtData(scadTessera) : '—'}
+                      </span>
+                      {giorniTess !== null && giorniTess <= 7 && (
+                        <p className={`text-xs mt-0.5 ${giorniTess <= 3 ? 'text-red-500' : 'text-amber-500'}`}>
+                          {giorniTess <= 0 ? 'Scaduta' : `tra ${giorniTess}g`}
+                        </p>
+                      )}
                     </td>
                     <td className="px-5 py-4">
                       <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{
