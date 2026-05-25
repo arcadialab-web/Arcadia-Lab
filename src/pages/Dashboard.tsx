@@ -878,7 +878,7 @@ function MyEventsPanel() {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { section = 'overview' } = useParams();
+  const { section = 'overview', subsection } = useParams();
   const navigate = useNavigate();
   const admin = ADMIN_EMAILS.includes(user?.email ?? '');
   const nav = admin ? adminNav : userNav;
@@ -902,7 +902,7 @@ export default function Dashboard() {
         case 'events':         return <EventsManagementPanel />;
         case 'subscriptions':  return <SubscriptionsPanel />;
         case 'users':          return <UsersPanel />;
-        case 'email':          return <EmailMarketingPanel />;
+        case 'email':          return <EmailMarketingPanel initialTab={subsection === 'storico' ? 'storico' : 'componi'} />;
         case 'settings':       return <SettingsPanel isAdmin />;
         default:               return <AdminDashboard />;
       }

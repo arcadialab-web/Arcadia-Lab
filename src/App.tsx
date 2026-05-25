@@ -102,6 +102,9 @@ export default function App() {
           <Route path="/dashboard/:section" element={
             <ProtectedRoute><Dashboard /></ProtectedRoute>
           } />
+          <Route path="/dashboard/:section/:subsection" element={
+            <ProtectedRoute><Dashboard /></ProtectedRoute>
+          } />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />

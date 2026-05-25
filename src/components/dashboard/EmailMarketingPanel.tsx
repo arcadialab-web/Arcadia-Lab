@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, Check, AlertCircle, ChevronDown, X, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -172,8 +173,14 @@ function EmailHistoryPanel() {
 }
 
 // ── Pannello principale ───────────────────────────────────────
-export default function EmailMarketingPanel() {
-  const [tab, setTab] = useState<'componi' | 'storico'>('componi');
+export default function EmailMarketingPanel({ initialTab = 'componi' }: { initialTab?: 'componi' | 'storico' }) {
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<'componi' | 'storico'>(initialTab);
+
+  const handleTabChange = (t: 'componi' | 'storico') => {
+    setTab(t);
+    navigate(t === 'storico' ? '/dashboard/email/storico' : '/dashboard/email', { replace: true });
+  };
 
   const [subject, setSubject]   = useState('');
   const [body, setBody]         = useState('');
@@ -220,7 +227,7 @@ export default function EmailMarketingPanel() {
       {/* Tabs */}
       <div className="flex gap-1 bg-surface-container-low border border-outline-variant/30 rounded-2xl p-1">
         {(['componi', 'storico'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
+          <button key={t} onClick={() => handleTabChange(t)}
             className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${tab === t ? 'bg-primary text-white shadow' : 'text-on-surface-variant hover:text-on-surface'}`}
           >
             {t === 'componi' ? 'Componi' : 'Storico invii'}
