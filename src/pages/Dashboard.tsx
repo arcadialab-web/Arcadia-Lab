@@ -166,18 +166,25 @@ function UsersPanel() {
 }
 
 // ── Modal rinnovo abbonamento ─────────────────────────────────
-function RenewalModal({ plan, renewalFrom, userEmail, onClose }: {
-  plan: any; renewalFrom: string; userEmail: string; onClose: () => void;
+function RenewalModal({ plan, renewalFrom, userEmail, tesseraGiorni, onClose }: {
+  plan: any; renewalFrom: string; userEmail: string; tesseraGiorni: number | null; onClose: () => void;
 }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState('');
+  const [includeTessera, setIncludeTessera] = useState(false);
+  const offreTessera = tesseraGiorni !== null && tesseraGiorni <= 7;
 
   const handleRenew = async () => {
     setLoading(true);
     setError('');
     try {
       const { data, error: fnErr } = await supabase.functions.invoke('create-checkout-session', {
-        body: { plan_id: plan.id, email: userEmail, renewal_from: renewalFrom },
+        body: {
+          plan_id: plan.id,
+          email: userEmail,
+          renewal_from: renewalFrom,
+          ...(offreTessera ? { include_tessera: includeTessera } : {}),
+        },
       });
       if (fnErr || !data?.url) throw new Error();
       window.location.href = data.url;
@@ -236,6 +243,20 @@ function RenewalModal({ plan, renewalFrom, userEmail, onClose }: {
             <span className="flex-shrink-0 text-primary">ℹ</span>
             Il rinnovo parte dal giorno successivo alla scadenza attuale, senza interruzioni.
           </div>
+
+          {offreTessera && (
+            <label className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${includeTessera ? 'border-primary bg-primary/5' : 'border-outline-variant/40 bg-surface-container-low'}`}>
+              <input type="checkbox" checked={includeTessera} onChange={e => setIncludeTessera(e.target.checked)} className="mt-0.5 accent-primary w-4 h-4 flex-shrink-0" />
+              <div>
+                <p className={`text-sm font-bold ${tesseraGiorni! <= 3 ? 'text-red-700' : 'text-amber-800'}`}>
+                  Rinnova anche la tessera associativa <span className="font-normal">(+ € 20)</span>
+                </p>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  {tesseraGiorni! <= 0 ? 'La tua tessera è scaduta.' : `Scade tra ${tesseraGiorni} giorni.`} Puoi rinnovarla ora o in un secondo momento.
+                </p>
+              </div>
+            </label>
+          )}
 
           {error && <p className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2">{error}</p>}
 
@@ -451,6 +472,7 @@ function MyPlanPanel() {
             plan={renewPlan}
             renewalFrom={sub.data_scadenza}
             userEmail={user?.email ?? ''}
+            tesseraGiorni={tesseraGiorni}
             onClose={() => setRenewPlan(null)}
           />
         )}
