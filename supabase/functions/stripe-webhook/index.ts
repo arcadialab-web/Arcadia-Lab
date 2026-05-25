@@ -262,6 +262,19 @@ Deno.serve(async (req) => {
       htmlEmail,
     );
 
+    // Notifica admin
+    await sendEmail(
+      'arcadialabyoga@gmail.com',
+      `[Arcadia Lab.] Nuovo biglietto: ${eventTitolo}`,
+      `<p style="font-family:sans-serif;font-size:15px;">Nuovo acquisto biglietto:<br/>
+      <strong>Evento:</strong> ${eventTitolo}<br/>
+      <strong>Data:</strong> ${dataFmt}<br/>
+      <strong>Nome:</strong> ${nome} ${cognome}<br/>
+      <strong>Email:</strong> ${customerEmail}<br/>
+      <strong>Codice:</strong> ${codice}<br/>
+      <strong>Abbonato:</strong> ${isAbbonato ? 'Sì' : 'No'}</p>`,
+    );
+
     console.log(`✅ Biglietto evento ${codice} emesso per ${customerEmail}`);
 
     return new Response(JSON.stringify({ received: true }), {
@@ -396,6 +409,19 @@ Deno.serve(async (req) => {
       ? `Benvenuta/o in Arcadia Lab. — Il tuo account è pronto 🧘`
       : `Arcadia Lab. — Il tuo abbonamento "${planNome}" è attivo`;
     await sendEmail(customerEmail, subject, html);
+
+    // Notifica admin
+    const nomeDisplay = [session.metadata?.nome, session.metadata?.cognome].filter(Boolean).join(' ') || customerEmail;
+    await sendEmail(
+      'arcadialabyoga@gmail.com',
+      `[Arcadia Lab.] Nuovo abbonamento: ${planNome}`,
+      `<p style="font-family:sans-serif;font-size:15px;">Nuovo abbonamento acquistato:<br/>
+      <strong>Piano:</strong> ${planNome}<br/>
+      <strong>Nome:</strong> ${nomeDisplay}<br/>
+      <strong>Email:</strong> ${customerEmail}<br/>
+      <strong>Nuovo utente:</strong> ${isNewUser ? 'Sì' : 'No'}<br/>
+      <strong>Tessera aggiunta:</strong> ${aggiungeTessera ? 'Sì' : 'No'}</p>`,
+    );
 
     console.log('✅ Tutto completato per', customerEmail);
 
