@@ -20,7 +20,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   });
 }
 
-function buildHtml(subject: string, body: string, ctaUrl?: string, ctaLabel?: string): string {
+function buildHtml(subject: string, body: string, ctaUrl?: string, ctaLabel?: string, siteUrl = 'https://www.arcadialab.it'): string {
   const ctaBlock = ctaUrl ? `
     <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
       <tr><td align="center">
@@ -53,7 +53,7 @@ function buildHtml(subject: string, body: string, ctaUrl?: string, ctaLabel?: st
   </td></tr>
   <tr><td style="background:#f5f1e8;padding:20px 48px;text-align:center;">
     <p style="margin:0;font-size:12px;color:#a39c90;font-family:sans-serif;font-style:italic;">
-      Arcadia Lab. Yoga · <a href="https://www.arcadialab.it" style="color:#b56a56;text-decoration:none;">www.arcadialab.it</a>
+      Arcadia Lab. Yoga · <a href="${siteUrl}" style="color:#b56a56;text-decoration:none;">${siteUrl.replace(/^https?:\/\//, '')}</a>
     </p>
   </td></tr>
 </table>
@@ -131,7 +131,8 @@ Deno.serve(async (req) => {
     }
 
     // ── Invia email ───────────────────────────────────────────
-    const html = buildHtml(subject, body, cta_url, cta_label);
+    const siteUrl = Deno.env.get('SITE_URL') ?? 'https://www.arcadialab.it';
+    const html = buildHtml(subject, body, cta_url, cta_label, siteUrl);
     let sent = 0;
     for (const email of emails) {
       await sendEmail(email, subject, html);

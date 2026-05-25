@@ -41,8 +41,9 @@ async function verifyStripeSignature(body: string, sigHeader: string, secret: st
 function buildEmail(opts: {
   email: string; planNome: string; tempPassword: string;
   isNewUser: boolean; aggiungeTessera: boolean; tesseraScadenza: string;
+  siteUrl: string;
 }): string {
-  const { email, planNome, tempPassword, isNewUser, aggiungeTessera, tesseraScadenza } = opts;
+  const { email, planNome, tempPassword, isNewUser, aggiungeTessera, tesseraScadenza, siteUrl } = opts;
   return `<!DOCTYPE html>
 <html lang="it">
 <head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
@@ -81,11 +82,11 @@ function buildEmail(opts: {
       </td></tr>
     </table>
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr><td align="center">
-      <a href="https://www.arcadialab.it/auth" style="display:inline-block;background:#b56a56;color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:sans-serif;">Accedi ora</a>
+      <a href="${siteUrl}/auth" style="display:inline-block;background:#b56a56;color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:sans-serif;">Accedi ora</a>
     </td></tr></table>
     ` : `
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr><td align="center">
-      <a href="https://www.arcadialab.it/auth" style="display:inline-block;background:#b56a56;color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:sans-serif;">Accedi alla tua area personale</a>
+      <a href="${siteUrl}/auth" style="display:inline-block;background:#b56a56;color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:sans-serif;">Accedi alla tua area personale</a>
     </td></tr></table>
     `}
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f0;border:1px solid #f0d4c4;border-radius:12px;margin-bottom:28px;">
@@ -99,7 +100,7 @@ function buildEmail(opts: {
     <p style="margin:0;font-size:13px;color:#5a544c;font-family:sans-serif;">Dubbi? <a href="mailto:arcadialabyoga@gmail.com" style="color:#b56a56;">arcadialabyoga@gmail.com</a></p>
   </td></tr>
   <tr><td style="background:#f5f1e8;padding:20px 48px;text-align:center;">
-    <p style="margin:0;font-size:12px;color:#a39c90;font-family:sans-serif;font-style:italic;">Arcadia Lab. Yoga · <a href="https://www.arcadialab.it" style="color:#b56a56;text-decoration:none;">www.arcadialab.it</a></p>
+    <p style="margin:0;font-size:12px;color:#a39c90;font-family:sans-serif;font-style:italic;">Arcadia Lab. Yoga · <a href="${siteUrl}" style="color:#b56a56;text-decoration:none;">${siteUrl.replace(/^https?:\/\//, '')}</a></p>
   </td></tr>
 </table>
 </td></tr>
@@ -151,6 +152,8 @@ Deno.serve(async (req) => {
     console.error('Email mancante');
     return new Response('Email mancante', { status: 400 });
   }
+
+  const siteUrl = Deno.env.get('SITE_URL') ?? 'https://www.arcadialab.it';
 
   // ── EVENTO SPECIALE ───────────────────────────────────────────
   if (metaType === 'event') {
@@ -246,7 +249,7 @@ Deno.serve(async (req) => {
     </p>
   </td></tr>
   <tr><td style="background:#f5f1e8;padding:20px 48px;text-align:center;">
-    <p style="margin:0;font-size:12px;color:#a39c90;font-family:sans-serif;font-style:italic;">Arcadia Lab. Yoga · <a href="https://www.arcadialab.it" style="color:#b56a56;text-decoration:none;">www.arcadialab.it</a></p>
+    <p style="margin:0;font-size:12px;color:#a39c90;font-family:sans-serif;font-style:italic;">Arcadia Lab. Yoga · <a href="${siteUrl}" style="color:#b56a56;text-decoration:none;">${siteUrl.replace(/^https?:\/\//, '')}</a></p>
   </td></tr>
 </table>
 </td></tr>
@@ -388,7 +391,7 @@ Deno.serve(async (req) => {
     console.log('Abbonamento creato');
 
     // Email
-    const html = buildEmail({ email: customerEmail, planNome, tempPassword, isNewUser, aggiungeTessera, tesseraScadenza: tesseraStr });
+    const html = buildEmail({ email: customerEmail, planNome, tempPassword, isNewUser, aggiungeTessera, tesseraScadenza: tesseraStr, siteUrl });
     const subject = isNewUser
       ? `Benvenuta/o in Arcadia Lab. — Il tuo account è pronto 🧘`
       : `Arcadia Lab. — Il tuo abbonamento "${planNome}" è attivo`;

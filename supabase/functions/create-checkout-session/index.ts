@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
 
     const aggiungeTessera = isNewUser || !hasTesseraValida;
 
-    const appUrl = Deno.env.get('APP_URL') ?? 'https://www.arcadialab.it';
+    const appUrl = Deno.env.get('SITE_URL') ?? 'https://www.arcadialab.it';
 
     // 4. Costruisci i line items
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [

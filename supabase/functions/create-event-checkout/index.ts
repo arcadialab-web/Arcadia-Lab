@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     }
 
     const emailNorm = email.toLowerCase().trim();
-    const appUrl   = Deno.env.get('APP_URL') ?? 'https://www.arcadialab.it';
+    const appUrl   = Deno.env.get('SITE_URL') ?? 'https://www.arcadialab.it';
 
     // 1. Leggi l'evento
     const { data: evento, error: evErr } = await supabase
