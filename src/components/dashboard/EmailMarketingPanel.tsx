@@ -233,8 +233,7 @@ export function EventNotificationModal({ event, onClose }: {
   event: { id: string; titolo: string; data_evento: string; luogo?: string };
   onClose: () => void;
 }) {
-  const appUrl    = 'https://www.arcadialab.it';
-  const ctaUrl    = `${appUrl}/workshops`;
+  const ctaUrl    = `${window.location.origin}/workshops`;
   const dataFmt   = new Date(event.data_evento).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   const [subject, setSubject]   = useState(`Nuovo evento: ${event.titolo}`);
