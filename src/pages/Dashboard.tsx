@@ -294,107 +294,140 @@ function MyPlanPanel() {
   const oggi2 = new Date(); oggi2.setHours(0,0,0,0);
   const tesseraDate    = tesseraScadenza ? new Date(tesseraScadenza) : null;
   const tesseraGiorni  = tesseraDate ? Math.ceil((tesseraDate.getTime() - oggi2.getTime()) / 86400000) : null;
-  const mostraTessera  = tesseraGiorni !== null && tesseraGiorni <= 7;
+
+
+  const tesseraScadutaFmt = tesseraDate
+    ? tesseraDate.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+  const tesseraStatoLabel = !tesseraDate ? 'Nessuna tessera'
+    : tesseraGiorni! <= 0 ? 'Scaduta'
+    : tesseraGiorni! <= 3 ? `Scade tra ${tesseraGiorni}g`
+    : tesseraGiorni! <= 7 ? `Scade tra ${tesseraGiorni}g`
+    : 'Attiva';
+  const tesseraStatoColor = !tesseraDate ? 'bg-surface-container text-on-surface-variant'
+    : tesseraGiorni! <= 3 ? 'bg-red-100 text-red-600'
+    : tesseraGiorni! <= 7 ? 'bg-amber-100 text-amber-700'
+    : 'bg-green-100 text-green-700';
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      {!sub ? (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
-          <p className="text-sm font-semibold text-amber-800 mb-1">Nessun abbonamento attivo</p>
-          <p className="text-xs text-amber-700">Acquista un abbonamento dalla <a href="/#pricing" className="underline font-bold">pagina principale</a>.</p>
-        </div>
-      ) : (
-        <div className="border border-primary/20 rounded-[1.5rem] p-6" style={{ background: 'linear-gradient(135deg, rgba(181,106,86,0.08), rgba(139,168,136,0.04))' }}>
-          <div className="flex items-start justify-between mb-5">
-            <div>
-              <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant">Piano attivo</p>
-              <h3 className="text-3xl font-serif text-on-surface mt-1">{planNome}</h3>
+    <div className="space-y-5 max-w-2xl">
+
+      {/* ── ABBONAMENTO ─────────────────────────────────────────── */}
+      <div>
+        <p className="text-[10px] font-label uppercase tracking-[0.25em] text-on-surface-variant mb-3">Abbonamento</p>
+        {!sub ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
+            <p className="text-sm font-semibold text-amber-800 mb-1">Nessun abbonamento attivo</p>
+            <p className="text-xs text-amber-700">Acquista un abbonamento dalla <a href="/#pricing" className="underline font-bold">pagina principale</a>.</p>
+          </div>
+        ) : (
+          <div className="border border-primary/20 rounded-[1.5rem] p-6" style={{ background: 'linear-gradient(135deg, rgba(181,106,86,0.08), rgba(139,168,136,0.04))' }}>
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant">Piano attivo</p>
+                <h3 className="text-3xl font-serif text-on-surface mt-1">{planNome}</h3>
+              </div>
+              <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${giorniRimasti <= 3 ? 'bg-red-100 text-red-600' : giorniRimasti <= 7 ? 'bg-amber-100 text-amber-700' : 'bg-primary/10 text-primary'}`}>
+                {giorniRimasti <= 0 ? 'Scaduto' : giorniRimasti <= 7 ? `Scade tra ${giorniRimasti}g` : 'Attivo'}
+              </span>
             </div>
-            <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${giorniRimasti <= 3 ? 'bg-red-100 text-red-600' : giorniRimasti <= 7 ? 'bg-amber-100 text-amber-700' : 'bg-primary/10 text-primary'}`}>
-              {giorniRimasti <= 0 ? 'Scaduto' : giorniRimasti <= 7 ? `Scade tra ${giorniRimasti}g` : 'Attivo'}
+            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-outline-variant/20">
+              {[
+                { label: 'Lezioni incluse',  value: String(lezioniTotali) },
+                { label: 'Lezioni rimaste',  value: String(lezioniTotali - lezioniUsate) },
+                { label: 'Giorni rimasti',   value: String(Math.max(giorniRimasti, 0)) },
+              ].map(s => (
+                <div key={s.label}>
+                  <p className="text-2xl font-serif font-bold text-on-surface">{s.value}</p>
+                  <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mt-0.5">{s.label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4">
+              <div className="flex justify-between text-xs mb-2">
+                <span className="text-on-surface-variant font-label uppercase tracking-wider">Utilizzo</span>
+                <span className="font-bold text-on-surface">{lezioniUsate}/{lezioniTotali} lezioni</span>
+              </div>
+              <div className="h-2.5 bg-surface-container rounded-full overflow-hidden">
+                <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
+              </div>
+              <p className="text-xs text-on-surface-variant mt-2">
+                Scadenza: {scadenza?.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) ?? '—'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Banner rinnovo abbonamento */}
+        {mostraRinnovo && (
+          <div className={`mt-3 rounded-2xl p-4 border ${giorniRimasti <= 3 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+            <p className={`text-sm font-bold mb-1 ${giorniRimasti <= 3 ? 'text-red-700' : 'text-amber-800'}`}>
+              {giorniRimasti <= 0 ? 'Il tuo abbonamento è scaduto' : `Scade tra ${giorniRimasti} giorn${giorniRimasti === 1 ? 'o' : 'i'}`}
+            </p>
+            <p className={`text-xs mb-3 ${giorniRimasti <= 3 ? 'text-red-600' : 'text-amber-700'}`}>
+              Rinnova ora — il nuovo abbonamento partirà dal giorno successivo alla scadenza.
+            </p>
+            <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-2">Scegli il piano:</p>
+            <div className="space-y-2">
+              {piani.map(p => (
+                <div key={p.id} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-outline-variant/20">
+                  <div>
+                    <p className="text-sm font-bold text-on-surface">{p.nome?.split('—')[1]?.trim() ?? p.nome}</p>
+                    <p className="text-xs text-on-surface-variant">{p.lezioni_totali} lezioni · {p.durata_giorni} giorni</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-on-surface">€ {p.prezzo.toFixed(0)}</span>
+                    <button onClick={() => setRenewPlan(p)} className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all">
+                      Rinnova
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── TESSERA ──────────────────────────────────────────────── */}
+      <div>
+        <p className="text-[10px] font-label uppercase tracking-[0.25em] text-on-surface-variant mb-3">Tessera Associativa</p>
+        <div className="border border-outline-variant/30 rounded-[1.5rem] p-5 bg-surface-container-low">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-on-surface">Tessera Annuale</p>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                {tesseraScadutaFmt ? `Scadenza: ${tesseraScadutaFmt}` : 'Nessuna tessera registrata'}
+              </p>
+            </div>
+            <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${tesseraStatoColor}`}>
+              {tesseraStatoLabel}
             </span>
           </div>
-          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-outline-variant/20">
-            {[
-              { label: 'Lezioni incluse',  value: String(lezioniTotali) },
-              { label: 'Lezioni rimaste',  value: String(lezioniTotali - lezioniUsate) },
-              { label: 'Giorni rimasti',   value: String(Math.max(giorniRimasti, 0)) },
-            ].map(s => (
-              <div key={s.label}>
-                <p className="text-2xl font-serif font-bold text-on-surface">{s.value}</p>
-                <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mt-0.5">{s.label}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4">
-            <div className="flex justify-between text-xs mb-2">
-              <span className="text-on-surface-variant font-label uppercase tracking-wider">Utilizzo</span>
-              <span className="font-bold text-on-surface">{lezioniUsate}/{lezioniTotali} lezioni</span>
-            </div>
-            <div className="h-2.5 bg-surface-container rounded-full overflow-hidden">
-              <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
-            </div>
-            <p className="text-xs text-on-surface-variant mt-2">
-              Scadenza: {scadenza?.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) ?? '—'}
-            </p>
-          </div>
-        </div>
-      )}
 
-      {/* Banner rinnovo */}
-      {mostraRinnovo && (
-        <div className={`rounded-2xl p-4 border ${giorniRimasti <= 3 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
-          <p className={`text-sm font-bold mb-1 ${giorniRimasti <= 3 ? 'text-red-700' : 'text-amber-800'}`}>
-            {giorniRimasti <= 0 ? 'Il tuo abbonamento è scaduto' : `Il tuo abbonamento scade tra ${giorniRimasti} giorn${giorniRimasti === 1 ? 'o' : 'i'}`}
-          </p>
-          <p className={`text-xs mb-3 ${giorniRimasti <= 3 ? 'text-red-600' : 'text-amber-700'}`}>
-            Rinnova ora per continuare senza interruzioni — il nuovo abbonamento partirà dal giorno successivo alla scadenza.
-          </p>
-          <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-2">Scegli il piano da rinnovare:</p>
-          <div className="space-y-2">
-            {piani.map(p => (
-              <div key={p.id} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-outline-variant/20">
-                <div>
-                  <p className="text-sm font-bold text-on-surface">{p.nome?.split('—')[1]?.trim() ?? p.nome}</p>
-                  <p className="text-xs text-on-surface-variant">{p.lezioni_totali} lezioni · {p.durata_giorni} giorni</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-on-surface">€ {p.prezzo.toFixed(0)}</span>
-                  <button onClick={() => setRenewPlan(p)}
-                    className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all"
-                  >
-                    Rinnova
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Avviso + bottone rinnovo se in scadenza o scaduta */}
+          {tesseraDate && tesseraGiorni! <= 7 && (
+            <div className={`mt-4 pt-4 border-t ${tesseraGiorni! <= 3 ? 'border-red-200' : 'border-amber-200'}`}>
+              <p className={`text-xs mb-3 ${tesseraGiorni! <= 3 ? 'text-red-600' : 'text-amber-700'}`}>
+                {tesseraGiorni! <= 0
+                  ? 'Senza tessera valida non puoi prenotare le lezioni.'
+                  : 'Puoi rinnovarla ora o aspettare e rinnovarla insieme al prossimo abbonamento.'}
+              </p>
+              <button
+                onClick={rinnovaTesseraStandalone}
+                disabled={tesseraLoading}
+                className="text-xs font-bold px-4 py-2 rounded-xl bg-primary text-white hover:bg-opacity-90 transition-all disabled:opacity-60 flex items-center gap-2"
+              >
+                {tesseraLoading ? <><Loader2 size={12} className="animate-spin" /> Attendere...</> : 'Rinnova tessera — € 20'}
+              </button>
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Banner tessera in scadenza */}
-      {mostraTessera && (
-        <div className={`rounded-2xl p-4 border ${tesseraGiorni! <= 3 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
-          <p className={`text-sm font-bold mb-1 ${tesseraGiorni! <= 3 ? 'text-red-700' : 'text-amber-800'}`}>
-            {tesseraGiorni! <= 0 ? 'La tua tessera è scaduta' : `La tua tessera scade tra ${tesseraGiorni} giorn${tesseraGiorni === 1 ? 'o' : 'i'}`}
-          </p>
-          <p className={`text-xs mb-3 ${tesseraGiorni! <= 3 ? 'text-red-600' : 'text-amber-700'}`}>
-            Puoi rinnovarla ora (€ 20) oppure aspettare e rinnovarla insieme al prossimo abbonamento.
-          </p>
-          <button
-            onClick={rinnovaTesseraStandalone}
-            disabled={tesseraLoading}
-            className="text-xs font-bold px-4 py-2 rounded-xl bg-primary text-white hover:bg-opacity-90 transition-all disabled:opacity-60 flex items-center gap-2"
-          >
-            {tesseraLoading ? <><Loader2 size={12} className="animate-spin" /> Attendere...</> : 'Rinnova tessera — € 20'}
-          </button>
-        </div>
-      )}
+      </div>
 
       {/* Lista piani (quando non in scadenza) */}
       {!mostraRinnovo && piani.length > 0 && (
         <div>
-          <h3 className="font-serif text-lg text-on-surface mb-4">Piani disponibili</h3>
+          <p className="text-[10px] font-label uppercase tracking-[0.25em] text-on-surface-variant mb-3">Piani disponibili</p>
           <div className="grid gap-3">
             {piani.map(p => (
               <div key={p.id} className="flex items-center justify-between p-4 bg-surface-container-low border border-outline-variant/30 rounded-2xl hover:border-primary/30 transition-all group">
