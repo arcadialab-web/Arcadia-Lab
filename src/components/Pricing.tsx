@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -48,7 +49,7 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const inp = 'w-full bg-surface-container-low border border-outline-variant/50 rounded-2xl px-4 py-3.5 text-on-surface text-sm placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all';
   const lbl = 'block text-xs font-label uppercase tracking-widest text-on-surface-variant mb-2';
 
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center"
@@ -126,7 +127,8 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
           </p>
         </form>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 

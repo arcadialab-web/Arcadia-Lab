@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Pencil, Trash2, X, Check, AlertCircle, Users, Search, Phone, Mail, Hash, Upload, Image, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, AlertCircle, Users, Search, Phone, Mail, Hash, Upload, Image, ChevronDown, ScanLine, UserCheck, UserX } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const BUCKET = 'eventi';
@@ -261,9 +261,16 @@ function EventModal({ event, onClose, onSave }: {
 
 // ── Pannello partecipanti ─────────────────────────────────────
 function ParticipantsPanel({ event, onClose }: { event: SpecialEvent; onClose: () => void }) {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch]   = useState('');
+  const [tickets, setTickets]   = useState<Ticket[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [search, setSearch]     = useState('');
+  const [tab, setTab]           = useState<'lista' | 'verifica'>('lista');
+
+  // ── verifica on-site ──
+  const [codice, setCodice]         = useState('');
+  const [found, setFound]           = useState<Ticket | null | false>(null); // null=idle, false=not found
+  const [verifying, setVerifying]   = useState(false);
+  const codiceRef                   = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -278,10 +285,27 @@ function ParticipantsPanel({ event, onClose }: { event: SpecialEvent; onClose: (
 
   useEffect(() => { load(); }, [load]);
 
-  const markPresente = async (id: string, current: string) => {
-    const next = current === 'presente' ? 'confermato' : 'presente';
+  const setStato = async (id: string, next: string) => {
     await supabase.from('event_tickets').update({ stato: next }).eq('id', id);
     load();
+    setFound(f => f && (f as Ticket).id === id ? { ...(f as Ticket), stato: next } : f);
+  };
+
+  const verificaCodice = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!codice.trim()) return;
+    setVerifying(true);
+    setFound(null);
+    const q = codice.trim().toUpperCase();
+    const match = tickets.find(t => t.codice_ref?.toUpperCase() === q);
+    setFound(match ?? false);
+    setVerifying(false);
+  };
+
+  const resetVerifica = () => {
+    setCodice('');
+    setFound(null);
+    setTimeout(() => codiceRef.current?.focus(), 50);
   };
 
   const filtered = tickets.filter(t => {
@@ -294,8 +318,9 @@ function ParticipantsPanel({ event, onClose }: { event: SpecialEvent; onClose: (
       t.codice_ref?.toLowerCase().includes(q);
   });
 
-  const attivi    = tickets.filter(t => t.stato !== 'cancellato').length;
-  const presenti  = tickets.filter(t => t.stato === 'presente').length;
+  const attivi     = tickets.filter(t => t.stato !== 'cancellato').length;
+  const presenti   = tickets.filter(t => t.stato === 'presente').length;
+  const assenti    = tickets.filter(t => t.stato === 'assente').length;
   const totIncasso = tickets.filter(t => t.stato !== 'cancellato').reduce((s, t) => s + (t.prezzo_pagato || 0), 0);
 
   return (
@@ -308,9 +333,10 @@ function ParticipantsPanel({ event, onClose }: { event: SpecialEvent; onClose: (
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-5 border-b border-outline-variant/20 flex-shrink-0">
           <div>
-            <h3 className="font-serif text-lg text-on-surface">Partecipanti — {event.titolo}</h3>
+            <h3 className="font-serif text-lg text-on-surface">{event.titolo}</h3>
             <p className="text-xs text-on-surface-variant mt-0.5">
               {new Date(event.data_evento).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {event.luogo && ` · ${event.luogo}`}
             </p>
           </div>
           <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface flex-shrink-0"><X size={18} /></button>
@@ -319,9 +345,10 @@ function ParticipantsPanel({ event, onClose }: { event: SpecialEvent; onClose: (
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 px-6 py-4 border-b border-outline-variant/20 flex-shrink-0">
           {[
-            { label: 'Iscritti', value: attivi, color: '#8ba888' },
-            { label: 'Presenti', value: presenti, color: '#b56a56' },
-            { label: 'Incasso', value: `€ ${totIncasso.toFixed(0)}`, color: '#2b2927' },
+            { label: 'Iscritti',  value: attivi,                    color: '#8ba888' },
+            { label: 'Presenti',  value: presenti,                   color: '#4a9a4a' },
+            { label: 'Assenti',   value: assenti,                    color: '#e05050' },
+            { label: 'Incasso',   value: `€ ${totIncasso.toFixed(0)}`, color: '#2b2927' },
           ].map(s => (
             <div key={s.label} className="text-center bg-surface-container-low rounded-2xl p-3">
               <p className="text-2xl font-serif font-bold" style={{ color: s.color }}>{s.value}</p>
@@ -330,56 +357,185 @@ function ParticipantsPanel({ event, onClose }: { event: SpecialEvent; onClose: (
           ))}
         </div>
 
-        {/* Search */}
-        <div className="px-6 py-3 border-b border-outline-variant/10 flex-shrink-0">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" strokeWidth={1.5} />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Cerca per nome, email, telefono, codice..."
-              className="w-full bg-surface-container-low border border-outline-variant/30 rounded-2xl pl-9 pr-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary transition-all"
-            />
-          </div>
+        {/* Tab bar */}
+        <div className="flex border-b border-outline-variant/20 flex-shrink-0">
+          {([
+            { id: 'lista',    label: 'Lista iscritti', icon: <Users size={13} /> },
+            { id: 'verifica', label: 'Verifica codice', icon: <ScanLine size={13} /> },
+          ] as const).map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${tab === t.id ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
         </div>
 
-        {/* Lista */}
-        <div className="flex-1 overflow-y-auto px-6 py-3">
-          {loading ? (
-            <div className="text-center py-12 font-serif italic text-on-surface-variant">Caricamento...</div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-12 font-serif italic text-on-surface-variant">
-              {tickets.length === 0 ? 'Nessun iscritto ancora.' : 'Nessun risultato.'}
+        {/* ── TAB: Lista iscritti ── */}
+        {tab === 'lista' && (
+          <>
+            <div className="px-6 py-3 border-b border-outline-variant/10 flex-shrink-0">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" strokeWidth={1.5} />
+                <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Cerca per nome, email, telefono, codice..."
+                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded-2xl pl-9 pr-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary transition-all"
+                />
+              </div>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {filtered.map(t => (
-                <div key={t.id} className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${t.stato === 'presente' ? 'bg-green-50 border-green-200' : 'bg-surface-container-low border-outline-variant/20'}`}>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
-                      {(t.nome || '?').charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-on-surface truncate">{t.nome} {t.cognome}</p>
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span className="flex items-center gap-1 text-[11px] text-on-surface-variant"><Mail size={10} />{t.email}</span>
-                        {t.telefono && <span className="flex items-center gap-1 text-[11px] text-on-surface-variant"><Phone size={10} />{t.telefono}</span>}
-                        <span className="flex items-center gap-1 text-[11px] text-on-surface-variant font-mono"><Hash size={10} />{t.codice_ref}</span>
+            <div className="flex-1 overflow-y-auto px-6 py-3">
+              {loading ? (
+                <div className="text-center py-12 font-serif italic text-on-surface-variant">Caricamento...</div>
+              ) : filtered.length === 0 ? (
+                <div className="text-center py-12 font-serif italic text-on-surface-variant">
+                  {tickets.length === 0 ? 'Nessun iscritto ancora.' : 'Nessun risultato.'}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filtered.map(t => (
+                    <div key={t.id} className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${t.stato === 'presente' ? 'bg-green-50 border-green-200' : t.stato === 'assente' ? 'bg-red-50 border-red-200' : 'bg-surface-container-low border-outline-variant/20'}`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
+                          {(t.nome || '?').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-on-surface truncate">{t.nome} {t.cognome}</p>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="flex items-center gap-1 text-[11px] text-on-surface-variant"><Mail size={10} />{t.email}</span>
+                            {t.telefono && <span className="flex items-center gap-1 text-[11px] text-on-surface-variant"><Phone size={10} />{t.telefono}</span>}
+                            <span className="flex items-center gap-1 text-[11px] text-on-surface-variant font-mono"><Hash size={10} />{t.codice_ref}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0 ml-3">
+                        {t.is_abbonato && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(181,106,86,0.12)', color: '#b56a56' }}>Abb.</span>}
+                        <span className="text-[11px] font-bold text-on-surface-variant">€ {(t.prezzo_pagato || 0).toFixed(0)}</span>
+                        <button onClick={() => setStato(t.id, t.stato === 'presente' ? 'confermato' : 'presente')}
+                          className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-all ${t.stato === 'presente' ? 'bg-green-100 text-green-700' : 'bg-surface-container text-on-surface-variant hover:bg-green-100 hover:text-green-700'}`}
+                        >
+                          ✓
+                        </button>
+                        <button onClick={() => setStato(t.id, t.stato === 'assente' ? 'confermato' : 'assente')}
+                          className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-all ${t.stato === 'assente' ? 'bg-red-100 text-red-600' : 'bg-surface-container text-on-surface-variant hover:bg-red-100 hover:text-red-500'}`}
+                        >
+                          ✗
+                        </button>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-                    {t.is_abbonato && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(181,106,86,0.12)', color: '#b56a56' }}>Abbonato</span>}
-                    <span className="text-[11px] font-bold text-on-surface-variant">€ {(t.prezzo_pagato || 0).toFixed(0)}</span>
-                    <button onClick={() => markPresente(t.id, t.stato)}
-                      className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-all ${t.stato === 'presente' ? 'bg-green-100 text-green-700 hover:bg-gray-100 hover:text-gray-600' : 'bg-surface-container text-on-surface-variant hover:bg-green-100 hover:text-green-700'}`}
-                    >
-                      {t.stato === 'presente' ? '✓ Presente' : 'Segna presente'}
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
+
+        {/* ── TAB: Verifica codice ── */}
+        {tab === 'verifica' && (
+          <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-6">
+
+            {/* Input codice */}
+            <form onSubmit={verificaCodice} className="flex gap-2">
+              <div className="relative flex-1">
+                <ScanLine size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+                <input
+                  ref={codiceRef}
+                  type="text"
+                  value={codice}
+                  onChange={e => { setCodice(e.target.value.toUpperCase()); setFound(null); }}
+                  placeholder="Es. ARC-AB12CD"
+                  autoFocus
+                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded-2xl pl-10 pr-4 py-3 text-sm font-mono text-on-surface tracking-widest focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all uppercase"
+                />
+              </div>
+              <button type="submit" disabled={!codice.trim() || verifying}
+                className="bg-primary text-white px-5 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider disabled:opacity-50 transition-all"
+              >
+                Verifica
+              </button>
+            </form>
+
+            {/* Risultato */}
+            <AnimatePresence mode="wait">
+              {found === false && (
+                <motion.div key="not-found" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  className="flex flex-col items-center gap-3 py-10 bg-red-50 border border-red-200 rounded-3xl text-center"
+                >
+                  <UserX size={40} className="text-red-400" strokeWidth={1.5} />
+                  <p className="font-serif text-lg text-red-700">Codice non trovato</p>
+                  <p className="text-xs text-red-500">Nessun biglietto corrisponde a <span className="font-mono font-bold">{codice}</span></p>
+                  <button onClick={resetVerifica} className="mt-2 text-xs font-bold text-red-600 underline underline-offset-2">Riprova</button>
+                </motion.div>
+              )}
+
+              {found && typeof found === 'object' && (
+                <motion.div key="found" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  className={`rounded-3xl border-2 overflow-hidden ${found.stato === 'presente' ? 'border-green-400 bg-green-50' : found.stato === 'assente' ? 'border-red-400 bg-red-50' : 'border-primary/30 bg-white'}`}
+                >
+                  {/* Badge stato */}
+                  <div className={`px-6 py-3 flex items-center gap-2 ${found.stato === 'presente' ? 'bg-green-500' : found.stato === 'assente' ? 'bg-red-500' : 'bg-primary'}`}>
+                    {found.stato === 'presente'
+                      ? <><Check size={16} className="text-white" /><span className="text-white text-xs font-bold uppercase tracking-widest">Già segnato presente</span></>
+                      : found.stato === 'assente'
+                      ? <><UserX size={16} className="text-white" /><span className="text-white text-xs font-bold uppercase tracking-widest">Segnato assente</span></>
+                      : <><UserCheck size={16} className="text-white" /><span className="text-white text-xs font-bold uppercase tracking-widest">Biglietto valido</span></>
+                    }
+                  </div>
+
+                  {/* Dati persona */}
+                  <div className="px-6 py-5 space-y-3">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary flex-shrink-0">
+                        {(found.nome || '?').charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-serif text-xl text-on-surface">{found.nome} {found.cognome}</p>
+                        <p className="text-xs font-mono text-primary mt-0.5">{found.codice_ref}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs text-on-surface-variant">
+                      <span className="flex items-center gap-1.5"><Mail size={11} />{found.email}</span>
+                      {found.telefono && <span className="flex items-center gap-1.5"><Phone size={11} />{found.telefono}</span>}
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full inline-block" style={{ background: found.is_abbonato ? '#b56a56' : '#ccc' }} />
+                        {found.is_abbonato ? 'Abbonato' : 'Non abbonato'}
+                      </span>
+                      <span className="flex items-center gap-1.5">💶 € {(found.prezzo_pagato || 0).toFixed(0)}</span>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => setStato(found.id, found.stato === 'presente' ? 'confermato' : 'presente')}
+                        className={`flex-1 py-3 rounded-2xl text-sm font-bold transition-all ${found.stato === 'presente' ? 'bg-green-100 text-green-700' : 'bg-green-500 text-white hover:bg-green-600 shadow-lg'}`}
+                      >
+                        {found.stato === 'presente' ? '✓ Presente' : '✓ Segna presente'}
+                      </button>
+                      <button
+                        onClick={() => setStato(found.id, found.stato === 'assente' ? 'confermato' : 'assente')}
+                        className={`flex-1 py-3 rounded-2xl text-sm font-bold transition-all ${found.stato === 'assente' ? 'bg-red-100 text-red-600' : 'bg-red-500 text-white hover:bg-red-600 shadow-lg'}`}
+                      >
+                        {found.stato === 'assente' ? '✗ Assente' : '✗ Segna assente'}
+                      </button>
+                      <button onClick={resetVerifica}
+                        className="px-4 py-3 rounded-2xl border border-outline-variant/40 text-xs font-bold text-on-surface-variant hover:text-on-surface transition-all"
+                      >
+                        Nuovo
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {found === null && !codice && (
+              <div className="text-center py-10 text-on-surface-variant">
+                <ScanLine size={36} className="mx-auto mb-3 opacity-30" strokeWidth={1} />
+                <p className="text-sm font-serif italic">Inserisci il codice mostrato dall'utente</p>
+                <p className="text-xs mt-1 opacity-60">Formato: ARC-XXXXXX</p>
+              </div>
+            )}
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
