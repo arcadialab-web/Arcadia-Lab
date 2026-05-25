@@ -155,6 +155,31 @@ Deno.serve(async (req) => {
 
   const siteUrl = Deno.env.get('SITE_URL') ?? 'https://www.arcadialab.it';
 
+  // ── RINNOVO TESSERA STANDALONE ───────────────────────────────
+  if (metaType === 'tessera_renewal') {
+    const customerEmail = session.customer_details?.email ?? session.metadata?.customer_email;
+    if (customerEmail) {
+      const scad = new Date();
+      scad.setDate(scad.getDate() + 365);
+      await supabase.from('profiles')
+        .update({ tessera_scadenza: scad.toISOString().split('T')[0] })
+        .eq('email', customerEmail.toLowerCase());
+
+      await sendEmail(
+        customerEmail,
+        'Arcadia Lab. — Tessera associativa rinnovata',
+        `<p style="font-family:sans-serif;font-size:15px;">
+          La tua <strong>tessera associativa annuale</strong> è stata rinnovata con successo.<br/>
+          Nuova scadenza: <strong>${scad.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
+        </p>`,
+      );
+      console.log(`✅ Tessera rinnovata per ${customerEmail}`);
+    }
+    return new Response(JSON.stringify({ received: true }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   // ── EVENTO SPECIALE ───────────────────────────────────────────
   if (metaType === 'event') {
     const eventId    = session.metadata?.event_id;

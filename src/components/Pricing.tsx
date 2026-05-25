@@ -20,8 +20,27 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const [form, setForm] = useState({ nome: '', cognome: '', email: '', telefono: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState('');
+  const [tesseraGiorni, setTesseraGiorni] = useState<number | null>(null);
+  const [includeTessera, setIncludeTessera] = useState(false);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  // Quando l'utente digita la mail, controlla se ha tessera in scadenza
+  const checkTessera = async (email: string) => {
+    if (!email.includes('@')) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('tessera_scadenza')
+      .eq('email', email.toLowerCase().trim())
+      .maybeSingle();
+    if (data?.tessera_scadenza) {
+      const oggi = new Date(); oggi.setHours(0,0,0,0);
+      const giorni = Math.ceil((new Date(data.tessera_scadenza).getTime() - oggi.getTime()) / 86400000);
+      setTesseraGiorni(giorni <= 7 ? giorni : null);
+    } else {
+      setTesseraGiorni(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -31,11 +50,12 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
     try {
       const { data, error: fnError } = await supabase.functions.invoke('create-checkout-session', {
         body: {
-          plan_id:  plan.id,
-          email:    form.email.toLowerCase().trim(),
-          nome:     form.nome.trim(),
-          cognome:  form.cognome.trim(),
-          telefono: form.telefono.trim(),
+          plan_id:          plan.id,
+          email:            form.email.toLowerCase().trim(),
+          nome:             form.nome.trim(),
+          cognome:          form.cognome.trim(),
+          telefono:         form.telefono.trim(),
+          include_tessera:  includeTessera || undefined,
         },
       });
       if (fnError || !data?.url) throw new Error('Errore nella creazione del pagamento');
@@ -97,7 +117,10 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
 
           <div>
             <label className={lbl}>Email *</label>
-            <input className={inp} required type="email" inputMode="email" autoComplete="email" placeholder="nome@email.com" value={form.email} onChange={e => set('email', e.target.value)} />
+            <input className={inp} required type="email" inputMode="email" autoComplete="email" placeholder="nome@email.com" value={form.email}
+              onChange={e => set('email', e.target.value)}
+              onBlur={e => checkTessera(e.target.value)}
+            />
             <p className="text-xs text-on-surface-variant mt-1.5">Le credenziali del tuo account verranno inviate qui.</p>
           </div>
 
@@ -105,6 +128,20 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
             <label className={lbl}>Telefono *</label>
             <input className={inp} required type="tel" inputMode="tel" autoComplete="tel" placeholder="+39 333 000 0000" value={form.telefono} onChange={e => set('telefono', e.target.value)} />
           </div>
+
+          {tesseraGiorni !== null && (
+            <label className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${includeTessera ? 'border-primary bg-primary/5' : 'border-outline-variant/40 bg-surface-container-low'}`}>
+              <input type="checkbox" checked={includeTessera} onChange={e => setIncludeTessera(e.target.checked)} className="mt-0.5 accent-primary w-4 h-4 flex-shrink-0" />
+              <div>
+                <p className={`text-sm font-bold ${tesseraGiorni <= 3 ? 'text-red-700' : 'text-amber-800'}`}>
+                  Rinnova anche la tessera associativa <span className="font-normal">(+ € 20)</span>
+                </p>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  {tesseraGiorni <= 0 ? 'La tua tessera è scaduta.' : `La tua tessera scade tra ${tesseraGiorni} giorni.`} Puoi rinnovarla ora o in un secondo momento.
+                </p>
+              </div>
+            </label>
+          )}
 
           {error && (
             <p className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">{error}</p>

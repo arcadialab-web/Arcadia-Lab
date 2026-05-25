@@ -21,15 +21,54 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { plan_id, email, nome, cognome, telefono, renewal_from } = await req.json();
+    const { plan_id, email, nome, cognome, telefono, renewal_from, include_tessera, tessera_only } = await req.json();
 
-    if (!plan_id || !email) {
-      return new Response(JSON.stringify({ error: 'plan_id ed email sono obbligatori' }), {
+    if (!email) {
+      return new Response(JSON.stringify({ error: 'email è obbligatoria' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (!tessera_only && !plan_id) {
+      return new Response(JSON.stringify({ error: 'plan_id è obbligatorio' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const emailNorm = email.toLowerCase().trim();
+    const appUrl = Deno.env.get('SITE_URL') ?? 'https://www.arcadialab.it';
+
+    // ── Modalità tessera standalone ──────────────────────────────
+    if (tessera_only) {
+      const existing = await stripe.customers.list({ email: emailNorm, limit: 1 });
+      const customer = existing.data[0]
+        ? await stripe.customers.update(existing.data[0].id, {})
+        : await stripe.customers.create({ email: emailNorm });
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        customer: customer.id,
+        locale: 'it',
+        line_items: [{
+          quantity: 1,
+          price_data: {
+            currency: 'eur',
+            unit_amount: TESSERA_PREZZO,
+            product_data: {
+              name: 'Tessera Associativa Annuale',
+              description: 'Rinnovo tessera. Valida 365 giorni dall\'acquisto.',
+            },
+          },
+        }],
+        metadata: { type: 'tessera_renewal', customer_email: emailNorm },
+        success_url: `${appUrl}/dashboard`,
+        cancel_url:  `${appUrl}/dashboard`,
+      });
+
+      return new Response(JSON.stringify({ url: session.url }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // 1. Leggi il piano
     const { data: plan, error: planError } = await supabase
@@ -59,9 +98,11 @@ Deno.serve(async (req) => {
       ? new Date(profile.tessera_scadenza) > new Date()
       : false;
 
-    const aggiungeTessera = isNewUser || !hasTesseraValida;
-
-    const appUrl = Deno.env.get('SITE_URL') ?? 'https://www.arcadialab.it';
+    // Se include_tessera è passato esplicitamente dal frontend lo rispettiamo,
+    // altrimenti lo aggiungiamo solo se obbligatorio (nuovo utente o tessera scaduta)
+    const aggiungeTessera = include_tessera !== undefined
+      ? include_tessera
+      : (isNewUser || !hasTesseraValida);
 
     // 4. Costruisci i line items
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [

@@ -254,20 +254,33 @@ function RenewalModal({ plan, renewalFrom, userEmail, onClose }: {
 
 function MyPlanPanel() {
   const { user } = useAuth();
-  const [sub, setSub]         = useState<any>(null);
-  const [piani, setPiani]     = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [renewPlan, setRenewPlan] = useState<any>(null);
+  const [sub, setSub]                     = useState<any>(null);
+  const [piani, setPiani]                 = useState<any[]>([]);
+  const [tesseraScadenza, setTessera]     = useState<string | null>(null);
+  const [loading, setLoading]             = useState(true);
+  const [renewPlan, setRenewPlan]         = useState<any>(null);
+  const [tesseraLoading, setTesseraLoading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     Promise.all([
       supabase.from('subscriptions').select('*, plans(*)').eq('user_id', user.id).eq('stato', 'attivo').order('created_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('plans').select('*').eq('is_attivo', true).order('ordine'),
-    ]).then(([{ data: s }, { data: p }]) => {
-      setSub(s); setPiani(p || []); setLoading(false);
+      supabase.from('profiles').select('tessera_scadenza').eq('id', user.id).single(),
+    ]).then(([{ data: s }, { data: p }, { data: prof }]) => {
+      setSub(s); setPiani(p || []); setTessera(prof?.tessera_scadenza ?? null); setLoading(false);
     });
   }, [user]);
+
+  const rinnovaTesseraStandalone = async () => {
+    if (!user?.email) return;
+    setTesseraLoading(true);
+    const { data } = await supabase.functions.invoke('create-checkout-session', {
+      body: { tessera_only: true, email: user.email, include_tessera: true },
+    });
+    if (data?.url) window.location.href = data.url;
+    else setTesseraLoading(false);
+  };
 
   if (loading) return <div className="text-center py-16 font-serif italic text-on-surface-variant">Caricamento...</div>;
 
@@ -278,6 +291,10 @@ function MyPlanPanel() {
   const giorniRimasti  = scadenza ? Math.ceil((scadenza.getTime() - Date.now()) / 86400000) : 0;
   const planNome       = sub?.plans?.nome?.split('—')[1]?.trim() ?? sub?.plans?.nome ?? '—';
   const mostraRinnovo  = sub && giorniRimasti <= 7;
+  const oggi2 = new Date(); oggi2.setHours(0,0,0,0);
+  const tesseraDate    = tesseraScadenza ? new Date(tesseraScadenza) : null;
+  const tesseraGiorni  = tesseraDate ? Math.ceil((tesseraDate.getTime() - oggi2.getTime()) / 86400000) : null;
+  const mostraTessera  = tesseraGiorni !== null && tesseraGiorni <= 7;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -352,6 +369,25 @@ function MyPlanPanel() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Banner tessera in scadenza */}
+      {mostraTessera && (
+        <div className={`rounded-2xl p-4 border ${tesseraGiorni! <= 3 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+          <p className={`text-sm font-bold mb-1 ${tesseraGiorni! <= 3 ? 'text-red-700' : 'text-amber-800'}`}>
+            {tesseraGiorni! <= 0 ? 'La tua tessera è scaduta' : `La tua tessera scade tra ${tesseraGiorni} giorn${tesseraGiorni === 1 ? 'o' : 'i'}`}
+          </p>
+          <p className={`text-xs mb-3 ${tesseraGiorni! <= 3 ? 'text-red-600' : 'text-amber-700'}`}>
+            Puoi rinnovarla ora (€ 20) oppure aspettare e rinnovarla insieme al prossimo abbonamento.
+          </p>
+          <button
+            onClick={rinnovaTesseraStandalone}
+            disabled={tesseraLoading}
+            className="text-xs font-bold px-4 py-2 rounded-xl bg-primary text-white hover:bg-opacity-90 transition-all disabled:opacity-60 flex items-center gap-2"
+          >
+            {tesseraLoading ? <><Loader2 size={12} className="animate-spin" /> Attendere...</> : 'Rinnova tessera — € 20'}
+          </button>
         </div>
       )}
 
