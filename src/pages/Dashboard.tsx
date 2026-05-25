@@ -6,7 +6,7 @@ import { X, ArrowRight, Loader2 } from 'lucide-react';
 import {
   LayoutDashboard, BarChart2, CreditCard, Users,
   Settings, CalendarCheck, BookOpen, Star, PackagePlus,
-  CheckCircle2, XCircle, Lock, Mail, AlertCircle,
+  CheckCircle2, XCircle, Lock, Mail, AlertCircle, Inbox,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -21,6 +21,7 @@ import PlansManagementPanel from '../components/dashboard/PlansManagementPanel';
 import CoursesManagementPanel from '../components/dashboard/CoursesManagementPanel';
 import EventsManagementPanel from '../components/dashboard/EventsManagementPanel';
 import EmailMarketingPanel from '../components/dashboard/EmailMarketingPanel';
+import LeadsPanel from '../components/dashboard/LeadsPanel';
 
 const ADMIN_EMAILS = ['ai.danielcorso@gmail.com', 'arcadialabyoga@gmail.com'];
 
@@ -33,6 +34,7 @@ const adminNav = [
   { id: 'subscriptions',  label: 'Abbonamenti',       icon: <CreditCard size={17} strokeWidth={1.5} /> },
   { id: 'users',          label: 'Utenti',            icon: <Users size={17} strokeWidth={1.5} /> },
   { id: 'email',          label: 'Email Marketing',   icon: <Mail size={17} strokeWidth={1.5} /> },
+  { id: 'leads',          label: 'Contatti',          icon: <Inbox size={17} strokeWidth={1.5} /> },
   { id: 'settings',       label: 'Impostazioni',      icon: <Settings size={17} strokeWidth={1.5} /> },
 ];
 
@@ -887,7 +889,7 @@ export default function Dashboard() {
     navigate(`/dashboard/${id}`, { replace: true });
   };
 
-  const validAdminSections = ['overview', 'analytics', 'plans', 'courses', 'events', 'subscriptions', 'users', 'email', 'settings'];
+  const validAdminSections = ['overview', 'analytics', 'plans', 'courses', 'events', 'subscriptions', 'users', 'email', 'leads', 'settings'];
   const validUserSections  = ['overview', 'lessons', 'plan', 'bookings', 'events', 'settings'];
   const validSections = admin ? validAdminSections : validUserSections;
   const activeSection = validSections.includes(section) ? section : 'overview';
@@ -903,6 +905,7 @@ export default function Dashboard() {
         case 'subscriptions':  return <SubscriptionsPanel />;
         case 'users':          return <UsersPanel />;
         case 'email':          return <EmailMarketingPanel initialTab={subsection === 'storico' ? 'storico' : 'componi'} />;
+        case 'leads':          return <LeadsPanel />;
         case 'settings':       return <SettingsPanel isAdmin />;
         default:               return <AdminDashboard />;
       }
