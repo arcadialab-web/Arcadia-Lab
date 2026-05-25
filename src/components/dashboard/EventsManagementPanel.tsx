@@ -296,9 +296,13 @@ function ParticipantsPanel({ event, onClose }: { event: SpecialEvent; onClose: (
     if (!codice.trim()) return;
     setVerifying(true);
     setFound(null);
-    const q = codice.trim().toUpperCase();
-    const match = tickets.find(t => t.codice_ref?.toUpperCase() === q);
-    setFound(match ?? false);
+    const { data } = await supabase
+      .from('event_tickets')
+      .select('*')
+      .eq('event_id', event.id)
+      .ilike('codice_ref', codice.trim())
+      .maybeSingle();
+    setFound(data ?? false);
     setVerifying(false);
   };
 
