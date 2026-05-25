@@ -147,6 +147,12 @@ function EmailHistoryPanel() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-on-surface truncate">{log.subject}</p>
                 <p className="text-xs text-on-surface-variant mt-0.5">{FILTER_LABELS[log.filter] ?? log.filter} · {log.recipients_count} destinatari</p>
+                {log.recipient_emails && log.recipient_emails.length > 0 && (
+                  <p className="text-xs text-on-surface-variant/70 mt-0.5 truncate">
+                    {log.recipient_emails.slice(0, 3).join(', ')}
+                    {log.recipient_emails.length > 3 ? ` +${log.recipient_emails.length - 3} altri` : ''}
+                  </p>
+                )}
               </div>
               <div className="text-right flex-shrink-0">
                 <p className="text-xs font-bold text-on-surface">{dateStr}</p>
