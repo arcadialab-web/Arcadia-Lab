@@ -141,6 +141,14 @@ Deno.serve(async (req) => {
 
     console.log(`✅ Email inviata a ${sent} destinatari`);
 
+    // Log invio
+    await supabase.from('email_logs').insert({
+      subject,
+      filter,
+      recipients_count: sent,
+      preview_body: body.slice(0, 300),
+    });
+
     return new Response(JSON.stringify({ sent }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

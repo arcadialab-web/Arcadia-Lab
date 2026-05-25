@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Users, Check, AlertCircle, ChevronDown, X } from 'lucide-react';
+import { Send, Check, AlertCircle, ChevronDown, X, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface Profile {
@@ -88,8 +88,93 @@ function UserSelector({ selected, onChange }: {
   );
 }
 
+// ── Storico invii ─────────────────────────────────────────────
+interface EmailLog {
+  id: string;
+  created_at: string;
+  subject: string;
+  filter: string;
+  recipients_count: number;
+  preview_body: string | null;
+}
+
+const FILTER_LABELS: Record<string, string> = {
+  tutti: 'Tutti gli utenti',
+  attivi: 'Abbonati attivi',
+  scaduti: 'Ex abbonati',
+  nessun_sub: 'Senza abbonamento',
+  ids: 'Selezione manuale',
+};
+
+function EmailHistoryPanel() {
+  const [logs, setLogs]       = useState<EmailLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.from('email_logs').select('*').order('created_at', { ascending: false }).limit(50)
+      .then(({ data }) => { setLogs(data ?? []); setLoading(false); });
+  }, []);
+
+  if (loading) return <p className="text-xs text-on-surface-variant py-8 text-center">Caricamento storico...</p>;
+  if (logs.length === 0) return (
+    <div className="flex flex-col items-center gap-3 py-16 text-center">
+      <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center">
+        <Mail size={20} className="text-on-surface-variant" />
+      </div>
+      <p className="text-sm font-semibold text-on-surface">Nessuna email inviata</p>
+      <p className="text-xs text-on-surface-variant">Le email inviate dalla sezione "Componi" appariranno qui.</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-2">
+      {logs.map(log => {
+        const date = new Date(log.created_at);
+        const dateStr = date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+        const timeStr = date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        const isOpen = expanded === log.id;
+        return (
+          <div key={log.id} className="bg-surface-container-low border border-outline-variant/30 rounded-2xl overflow-hidden">
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-surface-container transition-all"
+              onClick={() => setExpanded(isOpen ? null : log.id)}
+            >
+              <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Send size={13} className="text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-on-surface truncate">{log.subject}</p>
+                <p className="text-xs text-on-surface-variant mt-0.5">{FILTER_LABELS[log.filter] ?? log.filter} · {log.recipients_count} destinatari</p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-xs font-bold text-on-surface">{dateStr}</p>
+                <p className="text-xs text-on-surface-variant">{timeStr}</p>
+              </div>
+              <ChevronDown size={14} className={`text-on-surface-variant transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <AnimatePresence>
+              {isOpen && log.preview_body && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
+                  className="overflow-hidden border-t border-outline-variant/20"
+                >
+                  <p className="px-4 py-3 text-sm text-on-surface-variant whitespace-pre-line leading-relaxed">
+                    {log.preview_body}{log.preview_body.length >= 300 ? '…' : ''}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Pannello principale ───────────────────────────────────────
 export default function EmailMarketingPanel() {
+  const [tab, setTab] = useState<'componi' | 'storico'>('componi');
+
   const [subject, setSubject]   = useState('');
   const [body, setBody]         = useState('');
   const [filter, setFilter]     = useState<FilterId>('tutti');
@@ -132,6 +217,20 @@ export default function EmailMarketingPanel() {
         <p className="text-xs text-on-surface-variant mt-1">Scrivi e invia email personalizzate. Il testo viene inviato tramite Resend con il template Arcadia Lab.</p>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 bg-surface-container-low border border-outline-variant/30 rounded-2xl p-1">
+        {(['componi', 'storico'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${tab === t ? 'bg-primary text-white shadow' : 'text-on-surface-variant hover:text-on-surface'}`}
+          >
+            {t === 'componi' ? 'Componi' : 'Storico invii'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'storico' && <EmailHistoryPanel />}
+
+      {tab === 'componi' && <>
       <AnimatePresence>
         {msg && (
           <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
@@ -224,6 +323,7 @@ export default function EmailMarketingPanel() {
           : <><Send size={15} /> Invia email</>
         }
       </motion.button>
+      </>}
     </div>
   );
 }
