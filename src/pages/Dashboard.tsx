@@ -1,5 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, ArrowRight, Loader2 } from 'lucide-react';
 import {
   LayoutDashboard, BarChart2, CreditCard, Users,
   Settings, CalendarCheck, BookOpen, Star, PackagePlus,
@@ -132,16 +135,104 @@ function UsersPanel() {
   );
 }
 
+// ── Modal rinnovo abbonamento ─────────────────────────────────
+function RenewalModal({ plan, renewalFrom, userEmail, onClose }: {
+  plan: any; renewalFrom: string; userEmail: string; onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
+
+  const handleRenew = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke('create-checkout-session', {
+        body: { plan_id: plan.id, email: userEmail, renewal_from: renewalFrom },
+      });
+      if (fnErr || !data?.url) throw new Error();
+      window.location.href = data.url;
+    } catch {
+      setError('Errore durante la preparazione del pagamento. Riprova.');
+      setLoading(false);
+    }
+  };
+
+  const nuovaInizio   = new Date(renewalFrom);
+  nuovaInizio.setDate(nuovaInizio.getDate() + 1);
+  const nuovaScadenza = new Date(nuovaInizio);
+  nuovaScadenza.setDate(nuovaScadenza.getDate() + plan.durata_giorni);
+  const fmt = (d: Date) => d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  return createPortal(
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96 }} transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+        className="bg-white w-full max-w-md mx-auto rounded-3xl shadow-2xl overflow-hidden"
+      >
+        <div className="px-6 pt-6 pb-4 border-b border-outline-variant/10 flex items-start justify-between">
+          <div>
+            <p className="text-[10px] font-label uppercase tracking-[0.25em] text-primary mb-1">Rinnovo abbonamento</p>
+            <h3 className="font-serif text-lg text-on-surface">{plan.nome?.split('—')[1]?.trim() ?? plan.nome}</h3>
+            <p className="text-2xl font-bold text-on-surface mt-1">
+              € {plan.prezzo.toFixed(0)}
+              <span className="text-sm font-normal text-on-surface-variant ml-1">/ {plan.durata_giorni} giorni</span>
+            </p>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          <div className="bg-surface-container-low rounded-2xl p-4 space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-on-surface-variant">Inizio nuovo abbonamento</span>
+              <span className="font-bold text-on-surface">{fmt(nuovaInizio)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-on-surface-variant">Scadenza nuovo abbonamento</span>
+              <span className="font-bold text-on-surface">{fmt(nuovaScadenza)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-on-surface-variant">Lezioni incluse</span>
+              <span className="font-bold text-on-surface">{plan.lezioni_totali}</span>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2 p-3 rounded-2xl bg-primary/5 border border-primary/15 text-xs text-on-surface-variant">
+            <span className="flex-shrink-0 text-primary">ℹ</span>
+            Il rinnovo parte dal giorno successivo alla scadenza attuale, senza interruzioni.
+          </div>
+
+          {error && <p className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2">{error}</p>}
+
+          <motion.button whileTap={{ scale: 0.97 }} onClick={handleRenew} disabled={loading}
+            className="w-full bg-primary text-white py-4 rounded-2xl font-bold text-sm uppercase tracking-widest shadow-lg disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {loading ? <><Loader2 size={16} className="animate-spin" /> Preparazione...</> : <><ArrowRight size={16} /> Procedi al pagamento</>}
+          </motion.button>
+          <p className="text-center text-xs text-on-surface-variant">Pagamento sicuro tramite Stripe 🔒</p>
+        </div>
+      </motion.div>
+    </motion.div>,
+    document.body
+  );
+}
+
 function MyPlanPanel() {
   const { user } = useAuth();
-  const [sub, setSub]     = useState<any>(null);
-  const [piani, setPiani] = useState<any[]>([]);
+  const [sub, setSub]         = useState<any>(null);
+  const [piani, setPiani]     = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [renewPlan, setRenewPlan] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      supabase.from('subscriptions').select('*, plans(nome, descrizione)').eq('user_id', user.id).eq('stato', 'attivo').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('subscriptions').select('*, plans(*)').eq('user_id', user.id).eq('stato', 'attivo').order('created_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('plans').select('*').eq('is_attivo', true).order('ordine'),
     ]).then(([{ data: s }, { data: p }]) => {
       setSub(s); setPiani(p || []); setLoading(false);
@@ -150,12 +241,13 @@ function MyPlanPanel() {
 
   if (loading) return <div className="text-center py-16 font-serif italic text-on-surface-variant">Caricamento...</div>;
 
-  const lezioniTotali = sub?.lezioni_totali || 0;
-  const lezioniUsate  = sub?.lezioni_usate  || 0;
-  const pct = lezioniTotali > 0 ? Math.round((lezioniUsate / lezioniTotali) * 100) : 0;
-  const scadenza = sub?.data_scadenza ? new Date(sub.data_scadenza) : null;
-  const giorniRimasti = scadenza ? Math.ceil((scadenza.getTime() - Date.now()) / 86400000) : 0;
-  const planNome = sub?.plans?.nome?.split('—')[1]?.trim() ?? sub?.plans?.nome ?? '—';
+  const lezioniTotali  = sub?.lezioni_totali || 0;
+  const lezioniUsate   = sub?.lezioni_usate  || 0;
+  const pct            = lezioniTotali > 0 ? Math.round((lezioniUsate / lezioniTotali) * 100) : 0;
+  const scadenza       = sub?.data_scadenza ? new Date(sub.data_scadenza) : null;
+  const giorniRimasti  = scadenza ? Math.ceil((scadenza.getTime() - Date.now()) / 86400000) : 0;
+  const planNome       = sub?.plans?.nome?.split('—')[1]?.trim() ?? sub?.plans?.nome ?? '—';
+  const mostraRinnovo  = sub && giorniRimasti <= 7;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -171,7 +263,9 @@ function MyPlanPanel() {
               <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant">Piano attivo</p>
               <h3 className="text-3xl font-serif text-on-surface mt-1">{planNome}</h3>
             </div>
-            <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-primary/10 text-primary">Attivo</span>
+            <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${giorniRimasti <= 3 ? 'bg-red-100 text-red-600' : giorniRimasti <= 7 ? 'bg-amber-100 text-amber-700' : 'bg-primary/10 text-primary'}`}>
+              {giorniRimasti <= 0 ? 'Scaduto' : giorniRimasti <= 7 ? `Scade tra ${giorniRimasti}g` : 'Attivo'}
+            </span>
           </div>
           <div className="grid grid-cols-3 gap-4 pt-4 border-t border-outline-variant/20">
             {[
@@ -200,7 +294,39 @@ function MyPlanPanel() {
         </div>
       )}
 
-      {piani.length > 0 && (
+      {/* Banner rinnovo */}
+      {mostraRinnovo && (
+        <div className={`rounded-2xl p-4 border ${giorniRimasti <= 3 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+          <p className={`text-sm font-bold mb-1 ${giorniRimasti <= 3 ? 'text-red-700' : 'text-amber-800'}`}>
+            {giorniRimasti <= 0 ? 'Il tuo abbonamento è scaduto' : `Il tuo abbonamento scade tra ${giorniRimasti} giorn${giorniRimasti === 1 ? 'o' : 'i'}`}
+          </p>
+          <p className={`text-xs mb-3 ${giorniRimasti <= 3 ? 'text-red-600' : 'text-amber-700'}`}>
+            Rinnova ora per continuare senza interruzioni — il nuovo abbonamento partirà dal giorno successivo alla scadenza.
+          </p>
+          <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-2">Scegli il piano da rinnovare:</p>
+          <div className="space-y-2">
+            {piani.map(p => (
+              <div key={p.id} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-outline-variant/20">
+                <div>
+                  <p className="text-sm font-bold text-on-surface">{p.nome?.split('—')[1]?.trim() ?? p.nome}</p>
+                  <p className="text-xs text-on-surface-variant">{p.lezioni_totali} lezioni · {p.durata_giorni} giorni</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-bold text-on-surface">€ {p.prezzo.toFixed(0)}</span>
+                  <button onClick={() => setRenewPlan(p)}
+                    className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all"
+                  >
+                    Rinnova
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Lista piani (quando non in scadenza) */}
+      {!mostraRinnovo && piani.length > 0 && (
         <div>
           <h3 className="font-serif text-lg text-on-surface mb-4">Piani disponibili</h3>
           <div className="grid gap-3">
@@ -219,6 +345,17 @@ function MyPlanPanel() {
           </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {renewPlan && sub?.data_scadenza && (
+          <RenewalModal
+            plan={renewPlan}
+            renewalFrom={sub.data_scadenza}
+            userEmail={user?.email ?? ''}
+            onClose={() => setRenewPlan(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

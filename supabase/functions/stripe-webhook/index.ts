@@ -358,8 +358,13 @@ Deno.serve(async (req) => {
     // Disattiva abbonamenti precedenti
     await supabase.from('subscriptions').update({ stato: 'scaduto' }).eq('user_id', userId).eq('stato', 'attivo');
 
-    // Crea abbonamento
-    const scadAbb = new Date(oggi);
+    // Calcola date: se rinnovo parte dal giorno dopo la scadenza precedente
+    const renewalFrom = session.metadata?.renewal_from;
+    const dataInizio = renewalFrom
+      ? (() => { const d = new Date(renewalFrom); d.setDate(d.getDate() + 1); return d; })()
+      : oggi;
+
+    const scadAbb = new Date(dataInizio);
     scadAbb.setDate(scadAbb.getDate() + durata);
 
     const { error: subErr } = await supabase.from('subscriptions').insert({
@@ -367,7 +372,7 @@ Deno.serve(async (req) => {
       plan_id:            planId,
       lezioni_totali:     lezioni,
       lezioni_usate:      0,
-      data_inizio:        oggi.toISOString().split('T')[0],
+      data_inizio:        dataInizio.toISOString().split('T')[0],
       data_scadenza:      scadAbb.toISOString().split('T')[0],
       stato:              'attivo',
       prezzo_pagato:      session.amount_total ? session.amount_total / 100 : null,

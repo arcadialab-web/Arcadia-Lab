@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { plan_id, email, nome, cognome, telefono } = await req.json();
+    const { plan_id, email, nome, cognome, telefono, renewal_from } = await req.json();
 
     if (!plan_id || !email) {
       return new Response(JSON.stringify({ error: 'plan_id ed email sono obbligatori' }), {
@@ -134,6 +134,7 @@ Deno.serve(async (req) => {
         nome:             nome ?? '',
         cognome:          cognome ?? '',
         telefono:         telefono ?? '',
+        renewal_from:     renewal_from ?? '',
       },
       success_url: `${appUrl}/pagamento-ok?nuovo=${isNewUser ? '1' : '0'}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url:  `${appUrl}/#pricing`,
