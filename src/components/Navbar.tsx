@@ -33,7 +33,7 @@ export default function Navbar() {
     { name: 'Studio', href: '/#studio', id: 'studio' },
     { name: 'Corsi', href: '/#courses', id: 'courses' },
     { name: 'Workshop', href: '/workshops', id: 'workshops' },
-    { name: preLancio ? 'Iscriviti' : 'Abbonamenti', href: preLancio ? '/#contacts' : '/#pricing', id: 'pricing' },
+    { name: preLancio ? 'Iscriviti' : 'Abbonamenti', href: preLancio ? '/#register' : '/#pricing', id: 'pricing' },
   ];
 
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {

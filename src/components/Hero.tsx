@@ -102,7 +102,7 @@ export default function Hero() {
               whileHover={{ scale: 1.05, y: -5 }}
               whileTap={{ scale: 0.98 }}
               className="bg-primary text-white px-10 py-5 rounded-full font-bold tracking-wide shadow-2xl transition-all duration-300 flex items-center gap-3 border-none group hover:bg-opacity-90"
-              href={preLancio ? '#contacts' : '#pricing'}
+              href={preLancio ? '#register' : '#pricing'}
             >
               <span>Inizia ora</span>
               <motion.span 

@@ -266,10 +266,10 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
               <div>
                 <p className="text-sm font-semibold text-on-surface">Modalità pre-lancio</p>
                 <p className="text-xs text-on-surface-variant mt-0.5">
-                  Se attivo, il form in fondo alla home diventa un modulo di iscrizione al corso (senza pagamento). I bottoni "Inizia ora" e il link "Abbonamenti" reindirizzano al form anziché ai prezzi.
+                  Se attivo, il form della home diventa un modulo di iscrizione completo (abbonamento + certificato). Se disattivo, il form diventa un semplice contatto e i bottoni "Inizia ora" rimandano agli abbonamenti.
                 </p>
-                <span className={`inline-block mt-2 text-[10px] font-label uppercase tracking-widest px-2 py-0.5 rounded-full ${preLancio ? 'bg-amber-100 text-amber-700' : 'bg-surface-container text-on-surface-variant'}`}>
-                  {preLancio ? 'Pre-lancio attivo' : 'Sito in produzione'}
+                <span className={`inline-block mt-2 text-[10px] font-label uppercase tracking-widest px-2 py-0.5 rounded-full ${preLancio ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                  {preLancio ? '● Pre-lancio attivo' : '● Sito in produzione'}
                 </span>
               </div>
               <button
