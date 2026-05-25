@@ -97,6 +97,7 @@ interface EmailLog {
   filter: string;
   recipients_count: number;
   preview_body: string | null;
+  recipient_emails: string[] | null;
 }
 
 const FILTER_LABELS: Record<string, string> = {
@@ -154,14 +155,33 @@ function EmailHistoryPanel() {
               <ChevronDown size={14} className={`text-on-surface-variant transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             <AnimatePresence>
-              {isOpen && log.preview_body && (
+              {isOpen && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
-                  className="overflow-hidden border-t border-outline-variant/20"
+                  className="overflow-hidden border-t border-outline-variant/20 px-4 py-4 space-y-4"
                 >
-                  <p className="px-4 py-3 text-sm text-on-surface-variant whitespace-pre-line leading-relaxed">
-                    {log.preview_body}{log.preview_body.length >= 300 ? '…' : ''}
-                  </p>
+                  {log.preview_body && (
+                    <div>
+                      <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1.5">Anteprima testo</p>
+                      <p className="text-sm text-on-surface-variant whitespace-pre-line leading-relaxed">
+                        {log.preview_body}{log.preview_body.length >= 300 ? '…' : ''}
+                      </p>
+                    </div>
+                  )}
+                  {log.recipient_emails && log.recipient_emails.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-2">
+                        Destinatari ({log.recipient_emails.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+                        {log.recipient_emails.map(email => (
+                          <span key={email} className="text-xs bg-surface border border-outline-variant/30 rounded-full px-2.5 py-1 text-on-surface-variant">
+                            {email}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

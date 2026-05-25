@@ -147,6 +147,7 @@ Deno.serve(async (req) => {
       filter,
       recipients_count: sent,
       preview_body: body.slice(0, 300),
+      recipient_emails: emails,
     });
 
     return new Response(JSON.stringify({ sent }), {
