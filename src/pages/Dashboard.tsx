@@ -6,7 +6,7 @@ import { X, ArrowRight, Loader2 } from 'lucide-react';
 import {
   LayoutDashboard, BarChart2, CreditCard, Users,
   Settings, CalendarCheck, BookOpen, Star, PackagePlus,
-  CheckCircle2, XCircle, Lock, Mail,
+  CheckCircle2, XCircle, Lock, Mail, AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -419,6 +419,7 @@ function BookingsPanel() {
   const [myBookings, setMyBookings]   = useState<any[]>([]);
   const [sub, setSub]                 = useState<any>(null);
   const [unlocked, setUnlocked]       = useState(false);
+  const [tesseraScadenza, setTesseraScadenza] = useState<string | null>(null);
   const [loading, setLoading]         = useState(true);
   const [booking, setBooking]         = useState<string | null>(null);
 
@@ -433,13 +434,14 @@ function BookingsPanel() {
       supabase.from('course_exceptions').select('*'),
       supabase.from('course_bookings').select('*').eq('user_id', user.id).eq('stato', 'confermata'),
       supabase.from('subscriptions').select('id, lezioni_totali, lezioni_usate').eq('user_id', user.id).eq('stato', 'attivo').maybeSingle(),
-      supabase.from('profiles').select('prenotazioni_sbloccate').eq('id', user.id).single(),
+      supabase.from('profiles').select('prenotazioni_sbloccate, tessera_scadenza').eq('id', user.id).single(),
     ]);
     setCourses(c || []);
     setExceptions(ex || []);
     setMyBookings(b || []);
     setSub(s ?? null);
     setUnlocked(p?.prenotazioni_sbloccate ?? false);
+    setTesseraScadenza(p?.tessera_scadenza ?? null);
     setLoading(false);
   };
 
@@ -479,6 +481,9 @@ function BookingsPanel() {
 
   const lezioniRimaste = sub ? sub.lezioni_totali - sub.lezioni_usate : 0;
   const slots = generateSlots(courses, exceptions, 4);
+  const oggi = new Date(); oggi.setHours(0,0,0,0);
+  const tesseraScaduta = tesseraScadenza ? new Date(tesseraScadenza) < oggi : false;
+  const tesseraGiorni  = tesseraScadenza ? Math.ceil((new Date(tesseraScadenza).getTime() - oggi.getTime()) / 86400000) : null;
 
   if (!sub) return (
     <div className="text-center py-16 max-w-md mx-auto">
@@ -503,8 +508,34 @@ function BookingsPanel() {
     </div>
   );
 
+  if (tesseraScaduta) return (
+    <div className="max-w-lg mx-auto">
+      <div className="bg-red-50 border border-red-200 rounded-[1.5rem] p-8 text-center">
+        <AlertCircle size={32} className="text-red-500 mx-auto mb-4" strokeWidth={1.5} />
+        <h3 className="font-serif text-xl text-on-surface mb-2">Tessera scaduta</h3>
+        <p className="text-sm text-red-800 leading-relaxed">
+          La tua <strong>tessera associativa annuale</strong> è scaduta. Per continuare a prenotare le lezioni è necessario rinnovarla acquistando un nuovo abbonamento.
+        </p>
+        <a href="/#pricing" className="inline-block mt-5 bg-primary text-white text-sm font-bold px-6 py-3 rounded-full hover:opacity-90 transition-opacity">
+          Rinnova abbonamento →
+        </a>
+        <p className="text-xs text-red-600 mt-3">La tessera viene rinnovata automaticamente ad ogni nuovo abbonamento.</p>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
+      {tesseraGiorni !== null && tesseraGiorni <= 7 && (
+        <div className={`rounded-2xl p-4 border ${tesseraGiorni <= 3 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+          <p className={`text-sm font-bold mb-1 ${tesseraGiorni <= 3 ? 'text-red-700' : 'text-amber-800'}`}>
+            La tua tessera associativa scade tra {tesseraGiorni} giorn{tesseraGiorni === 1 ? 'o' : 'i'}
+          </p>
+          <p className={`text-xs ${tesseraGiorni <= 3 ? 'text-red-600' : 'text-amber-700'}`}>
+            Rinnova l'abbonamento prima della scadenza per non interrompere le prenotazioni.
+          </p>
+        </div>
+      )}
       {/* Lezioni rimaste */}
       <div className="flex items-center justify-between px-5 py-3 bg-surface-container-low border border-outline-variant/30 rounded-2xl">
         <span className="text-sm text-on-surface-variant">Lezioni rimaste nell'abbonamento</span>

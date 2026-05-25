@@ -22,15 +22,25 @@ async function sendEmail(to: string, subject: string, html: string) {
 }
 
 function buildReminderHtml(opts: {
-  nome: string; planNome: string; dataScadenza: string;
-  giorniRimasti: number; siteUrl: string;
+  nome: string; dataScadenza: string; giorniRimasti: number;
+  siteUrl: string; tipo: 'abbonamento' | 'tessera'; planNome?: string;
 }): string {
-  const { nome, planNome, dataScadenza, giorniRimasti, siteUrl } = opts;
+  const { nome, dataScadenza, giorniRimasti, siteUrl, tipo, planNome } = opts;
   const urgente = giorniRimasti <= 3;
   const coloreAvviso = urgente ? '#c0392b' : '#b56a56';
-  const messaggio = urgente
-    ? `Il tuo abbonamento <strong>${planNome}</strong> scade <strong>dopodomani</strong>. Rinnova subito per non interrompere le tue lezioni.`
-    : `Il tuo abbonamento <strong>${planNome}</strong> scade tra <strong>${giorniRimasti} giorni</strong> (il ${dataScadenza}). Puoi rinnovarlo direttamente dalla tua area personale.`;
+
+  const titolo = tipo === 'tessera'
+    ? 'La tua tessera sta per scadere'
+    : 'Il tuo abbonamento sta per scadere';
+
+  const messaggio = tipo === 'tessera'
+    ? `La tua <strong>tessera associativa annuale</strong> scade tra <strong>${giorniRimasti} giorni</strong> (il ${dataScadenza}). Senza tessera valida non potrai prenotare le lezioni — rinnova l'abbonamento per rinnovarla automaticamente.`
+    : (urgente
+        ? `Il tuo abbonamento <strong>${planNome}</strong> scade tra <strong>${giorniRimasti} giorni</strong>. Rinnova subito per non interrompere le tue lezioni.`
+        : `Il tuo abbonamento <strong>${planNome}</strong> scade tra <strong>${giorniRimasti} giorni</strong> (il ${dataScadenza}). Puoi rinnovarlo dalla tua area personale.`);
+
+  const labelScatola = tipo === 'tessera' ? 'Scadenza Tessera' : 'Scadenza Abbonamento';
+  const sottoLabel   = tipo === 'tessera' ? 'Tessera Associativa Annuale' : (planNome ?? '');
 
   return `<!DOCTYPE html>
 <html lang="it">
@@ -41,7 +51,7 @@ function buildReminderHtml(opts: {
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
   <tr><td style="background:#2b2927;padding:32px 48px;text-align:center;">
     <p style="margin:0;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.5);font-family:sans-serif;">Arcadia Lab. Yoga</p>
-    <h1 style="margin:10px 0 0;font-size:24px;color:#fff;font-weight:400;font-style:italic;">Il tuo abbonamento sta per scadere</h1>
+    <h1 style="margin:10px 0 0;font-size:24px;color:#fff;font-weight:400;font-style:italic;">${titolo}</h1>
   </td></tr>
   <tr><td style="padding:36px 48px;">
     <p style="margin:0 0 20px;font-size:15px;color:#2b2927;line-height:1.8;font-family:sans-serif;">
@@ -49,9 +59,9 @@ function buildReminderHtml(opts: {
     </p>
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f0;border:2px solid ${coloreAvviso};border-radius:16px;margin-bottom:24px;">
       <tr><td style="padding:20px 24px;text-align:center;">
-        <p style="margin:0 0 4px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#5a544c;font-family:sans-serif;">Scadenza</p>
+        <p style="margin:0 0 4px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#5a544c;font-family:sans-serif;">${labelScatola}</p>
         <p style="margin:0;font-size:22px;font-weight:700;color:${coloreAvviso};font-family:sans-serif;">${dataScadenza}</p>
-        <p style="margin:6px 0 0;font-size:13px;color:#5a544c;font-family:sans-serif;">${planNome}</p>
+        <p style="margin:6px 0 0;font-size:13px;color:#5a544c;font-family:sans-serif;">${sottoLabel}</p>
       </td></tr>
     </table>
     <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
@@ -81,8 +91,6 @@ Deno.serve(async (req) => {
 
   const siteUrl = Deno.env.get('SITE_URL') ?? 'https://www.arcadialab.it';
 
-  // Accetta sia chiamate POST (dal cron) che GET (per test manuale)
-  // Parametro opzionale: giorni=7 oppure giorni=3 (default: entrambi)
   let targetDays: number[] = [7, 3];
   if (req.method === 'POST') {
     try {
@@ -95,24 +103,21 @@ Deno.serve(async (req) => {
   oggi.setHours(0, 0, 0, 0);
 
   let totalSent = 0;
-  const results: { giorni: number; sent: number }[] = [];
+  const results: { tipo: string; giorni: number; sent: number }[] = [];
 
+  // ── Reminder abbonamenti ──────────────────────────────────────
   for (const giorni of targetDays) {
     const target = new Date(oggi);
     target.setDate(target.getDate() + giorni);
     const targetStr = target.toISOString().split('T')[0];
 
-    // Trova abbonamenti attivi che scadono esattamente tra `giorni` giorni
     const { data: subs, error } = await supabase
       .from('subscriptions')
       .select('user_id, plan_id, data_scadenza, profiles(email, nome, cognome)')
       .eq('stato', 'attivo')
       .eq('data_scadenza', targetStr);
 
-    if (error) {
-      console.error(`Errore query ${giorni}gg:`, error.message);
-      continue;
-    }
+    if (error) { console.error(`Errore abbonamenti ${giorni}gg:`, error.message); continue; }
 
     let sent = 0;
     for (const sub of subs ?? []) {
@@ -121,12 +126,10 @@ Deno.serve(async (req) => {
 
       const nome = [profile.nome, profile.cognome].filter(Boolean).join(' ') || profile.email.split('@')[0];
       const dataScadenzaFmt = new Date(sub.data_scadenza).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
-
-      // Recupera nome piano
       const { data: plan } = await supabase.from('plans').select('nome').eq('id', sub.plan_id).single();
       const planNome = plan?.nome ?? 'Abbonamento';
 
-      const html = buildReminderHtml({ nome, planNome, dataScadenza: dataScadenzaFmt, giorniRimasti: giorni, siteUrl });
+      const html = buildReminderHtml({ nome, planNome, dataScadenza: dataScadenzaFmt, giorniRimasti: giorni, siteUrl, tipo: 'abbonamento' });
       const subject = giorni <= 3
         ? `Arcadia Lab. — Il tuo abbonamento scade tra ${giorni} giorni ⚠️`
         : `Arcadia Lab. — Reminder: abbonamento in scadenza tra ${giorni} giorni`;
@@ -135,9 +138,43 @@ Deno.serve(async (req) => {
       sent++;
     }
 
-    results.push({ giorni, sent });
+    results.push({ tipo: 'abbonamento', giorni, sent });
     totalSent += sent;
-    console.log(`✅ Reminder ${giorni}gg: ${sent} email inviate`);
+    console.log(`✅ Reminder abbonamento ${giorni}gg: ${sent} email`);
+  }
+
+  // ── Reminder tessera ──────────────────────────────────────────
+  for (const giorni of targetDays) {
+    const target = new Date(oggi);
+    target.setDate(target.getDate() + giorni);
+    const targetStr = target.toISOString().split('T')[0];
+
+    const { data: profiles, error } = await supabase
+      .from('profiles')
+      .select('email, nome, cognome, tessera_scadenza')
+      .eq('tessera_scadenza', targetStr);
+
+    if (error) { console.error(`Errore tessera ${giorni}gg:`, error.message); continue; }
+
+    let sent = 0;
+    for (const profile of profiles ?? []) {
+      if (!profile.email) continue;
+
+      const nome = [profile.nome, profile.cognome].filter(Boolean).join(' ') || profile.email.split('@')[0];
+      const dataScadenzaFmt = new Date(profile.tessera_scadenza).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      const html = buildReminderHtml({ nome, dataScadenza: dataScadenzaFmt, giorniRimasti: giorni, siteUrl, tipo: 'tessera' });
+      const subject = giorni <= 3
+        ? `Arcadia Lab. — La tua tessera scade tra ${giorni} giorni ⚠️`
+        : `Arcadia Lab. — Reminder: tessera associativa in scadenza tra ${giorni} giorni`;
+
+      await sendEmail(profile.email, subject, html);
+      sent++;
+    }
+
+    results.push({ tipo: 'tessera', giorni, sent });
+    totalSent += sent;
+    console.log(`✅ Reminder tessera ${giorni}gg: ${sent} email`);
   }
 
   return new Response(JSON.stringify({ sent: totalSent, details: results }), {
