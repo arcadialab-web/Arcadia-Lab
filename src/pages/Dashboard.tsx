@@ -45,22 +45,99 @@ const userNav = [
   { id: 'settings',  label: 'Impostazioni',   icon: <Settings size={17} strokeWidth={1.5} /> },
 ];
 
+function UnlockModal({ utente, onClose, onDone }: { utente: any; onClose: () => void; onDone: () => void }) {
+  const [certScadenza, setCertScadenza] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSblocca = async () => {
+    setLoading(true);
+    const oggi = new Date().toISOString().split('T')[0];
+
+    // Aggiorna profilo
+    await supabase.from('profiles').update({
+      prenotazioni_sbloccate: true,
+      cert_medico_scadenza: certScadenza || null,
+    }).eq('id', utente.id);
+
+    // Attiva abbonamenti in_attesa → calcola date da oggi
+    const subInAttesa = (utente.subscriptions ?? []).find((s: any) => s.stato === 'in_attesa');
+    if (subInAttesa) {
+      const scad = new Date(oggi);
+      scad.setDate(scad.getDate() + subInAttesa.durata_giorni);
+      await supabase.from('subscriptions').update({
+        stato:        'attivo',
+        data_inizio:  oggi,
+        data_scadenza: scad.toISOString().split('T')[0],
+      }).eq('id', subInAttesa.id);
+    }
+
+    setLoading(false);
+    onDone();
+  };
+
+  return createPortal(
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96 }} transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+        className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden"
+      >
+        <div className="px-6 pt-6 pb-4 border-b border-outline-variant/10 flex items-start justify-between">
+          <div>
+            <p className="text-[10px] font-label uppercase tracking-[0.25em] text-primary mb-1">Sblocca utente</p>
+            <h3 className="font-serif text-lg text-on-surface">{utente.nome ? `${utente.nome} ${utente.cognome || ''}`.trim() : utente.email}</h3>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-surface-container-low">
+            <X size={18} className="text-on-surface-variant" />
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <label className="block text-xs font-label uppercase tracking-widest text-on-surface-variant mb-2">
+              Scadenza certificato medico <span className="text-on-surface-variant/50">(opzionale)</span>
+            </label>
+            <input type="date" value={certScadenza} onChange={e => setCertScadenza(e.target.value)}
+              className="w-full bg-surface-container-low border border-outline-variant/50 rounded-2xl px-4 py-3 text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+            />
+            <p className="text-xs text-on-surface-variant mt-1.5">Se inserita, l'utente verrà bloccato automaticamente alla scadenza.</p>
+          </div>
+          {(utente.subscriptions ?? []).some((s: any) => s.stato === 'in_attesa') && (
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+              <span className="flex-shrink-0">⚠️</span>
+              L'utente ha un abbonamento in attesa — verrà attivato da oggi.
+            </div>
+          )}
+          <button onClick={handleSblocca} disabled={loading}
+            className="w-full bg-primary text-white py-3.5 rounded-2xl font-bold text-sm uppercase tracking-widest disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {loading ? <><Loader2 size={16} className="animate-spin" /> Attendere...</> : <><CheckCircle2 size={16} /> Sblocca prenotazioni</>}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>,
+    document.body
+  );
+}
+
 function UsersPanel() {
-  const [utenti, setUtenti] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [utenti, setUtenti]     = useState<any[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [unlockTarget, setUnlockTarget] = useState<any>(null);
 
   const load = () => {
     supabase
       .from('profiles')
-      .select('id, nome, cognome, email, created_at, role, prenotazioni_sbloccate, tessera_scadenza, subscriptions(data_scadenza, stato)')
+      .select('id, nome, cognome, email, created_at, role, prenotazioni_sbloccate, tessera_scadenza, cert_medico_scadenza, subscriptions(id, data_scadenza, stato, durata_giorni)')
       .order('created_at', { ascending: false })
       .then(({ data }) => { setUtenti(data || []); setLoading(false); });
   };
 
   useEffect(() => { load(); }, []);
 
-  const togglePrenotazioni = async (id: string, current: boolean) => {
-    await supabase.from('profiles').update({ prenotazioni_sbloccate: !current }).eq('id', id);
+  const blocca = async (id: string) => {
+    await supabase.from('profiles').update({ prenotazioni_sbloccate: false }).eq('id', id);
     load();
   };
 
@@ -70,32 +147,35 @@ function UsersPanel() {
     <div className="space-y-4">
       <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-800">
         <Lock size={14} className="flex-shrink-0 mt-0.5 text-blue-600" strokeWidth={1.5} />
-        <p>Una volta ricevuto il <strong>certificato medico</strong> di un utente, clicca su <strong>"Sblocca prenotazioni"</strong> per permettergli di prenotare le lezioni.</p>
+        <p>Clicca su <strong>"Sblocca"</strong> per abilitare le prenotazioni dopo aver ricevuto il certificato medico. Puoi inserire la data di scadenza del certificato per blocco automatico.</p>
       </div>
       <div className="bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-outline-variant/20">
-                {['Utente', 'Iscrizione', 'Scad. Abbonamento', 'Scad. Tessera', 'Ruolo', 'Prenotazioni'].map(h => (
+                {['Utente', 'Iscrizione', 'Scad. Abbonamento', 'Scad. Tessera', 'Cert. Medico', 'Ruolo', 'Prenotazioni'].map(h => (
                   <th key={h} className="text-left px-5 py-4 text-[10px] font-label uppercase tracking-widest text-on-surface-variant">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {utenti.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-12 font-serif italic text-on-surface-variant">Nessun utente registrato</td></tr>
+                <tr><td colSpan={7} className="text-center py-12 font-serif italic text-on-surface-variant">Nessun utente registrato</td></tr>
               ) : utenti.map((u) => {
                 const displayName = u.nome ? `${u.nome} ${u.cognome || ''}`.trim() : (u.email ?? 'Utente');
                 const isAdmin = u.role === 'admin';
-                const subAttivo = (u.subscriptions ?? []).find((s: any) => s.stato === 'attivo');
+                const subAttivo = (u.subscriptions ?? []).find((s: any) => s.stato === 'attivo' || s.stato === 'in_attesa');
                 const scadAbb = subAttivo?.data_scadenza ? new Date(subAttivo.data_scadenza) : null;
                 const scadTessera = u.tessera_scadenza ? new Date(u.tessera_scadenza) : null;
+                const scadCert = u.cert_medico_scadenza ? new Date(u.cert_medico_scadenza) : null;
                 const oggi = new Date(); oggi.setHours(0,0,0,0);
-                const giorniAbb = scadAbb ? Math.ceil((scadAbb.getTime() - oggi.getTime()) / 86400000) : null;
+                const giorniAbb  = scadAbb    ? Math.ceil((scadAbb.getTime()    - oggi.getTime()) / 86400000) : null;
                 const giorniTess = scadTessera ? Math.ceil((scadTessera.getTime() - oggi.getTime()) / 86400000) : null;
+                const giorniCert = scadCert   ? Math.ceil((scadCert.getTime()   - oggi.getTime()) / 86400000) : null;
                 const fmtData = (d: Date) => d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
                 const scadClass = (giorni: number | null) => giorni === null ? 'text-on-surface-variant' : giorni <= 3 ? 'text-red-600 font-bold' : giorni <= 7 ? 'text-amber-600 font-semibold' : 'text-on-surface-variant';
+                const subInAttesa = (u.subscriptions ?? []).some((s: any) => s.stato === 'in_attesa');
                 return (
                   <tr key={u.id} className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container transition-colors">
                     <td className="px-5 py-4">
@@ -106,6 +186,7 @@ function UsersPanel() {
                         <div>
                           <p className="text-sm font-semibold text-on-surface">{displayName}</p>
                           <p className="text-xs text-on-surface-variant">{u.email ?? '—'}</p>
+                          {subInAttesa && <p className="text-[10px] font-bold text-amber-600 mt-0.5">Abbonamento in attesa</p>}
                         </div>
                       </div>
                     </td>
@@ -113,24 +194,22 @@ function UsersPanel() {
                       {u.created_at ? new Date(u.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                     </td>
                     <td className="px-5 py-4">
-                      <span className={`text-sm ${scadClass(giorniAbb)}`}>
-                        {scadAbb ? fmtData(scadAbb) : '—'}
-                      </span>
-                      {giorniAbb !== null && giorniAbb <= 7 && (
-                        <p className={`text-xs mt-0.5 ${giorniAbb <= 3 ? 'text-red-500' : 'text-amber-500'}`}>
-                          {giorniAbb <= 0 ? 'Scaduto' : `tra ${giorniAbb}g`}
-                        </p>
-                      )}
+                      {subInAttesa
+                        ? <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">In attesa cert.</span>
+                        : <><span className={`text-sm ${scadClass(giorniAbb)}`}>{scadAbb ? fmtData(scadAbb) : '—'}</span>
+                          {giorniAbb !== null && giorniAbb <= 7 && <p className={`text-xs mt-0.5 ${giorniAbb <= 3 ? 'text-red-500' : 'text-amber-500'}`}>{giorniAbb <= 0 ? 'Scaduto' : `tra ${giorniAbb}g`}</p>}</>
+                      }
                     </td>
                     <td className="px-5 py-4">
-                      <span className={`text-sm ${scadClass(giorniTess)}`}>
-                        {scadTessera ? fmtData(scadTessera) : '—'}
-                      </span>
-                      {giorniTess !== null && giorniTess <= 7 && (
-                        <p className={`text-xs mt-0.5 ${giorniTess <= 3 ? 'text-red-500' : 'text-amber-500'}`}>
-                          {giorniTess <= 0 ? 'Scaduta' : `tra ${giorniTess}g`}
-                        </p>
-                      )}
+                      <span className={`text-sm ${scadClass(giorniTess)}`}>{scadTessera ? fmtData(scadTessera) : '—'}</span>
+                      {giorniTess !== null && giorniTess <= 7 && <p className={`text-xs mt-0.5 ${giorniTess <= 3 ? 'text-red-500' : 'text-amber-500'}`}>{giorniTess <= 0 ? 'Scaduta' : `tra ${giorniTess}g`}</p>}
+                    </td>
+                    <td className="px-5 py-4">
+                      {scadCert
+                        ? <><span className={`text-sm ${scadClass(giorniCert)}`}>{fmtData(scadCert)}</span>
+                          {giorniCert !== null && giorniCert <= 30 && <p className={`text-xs mt-0.5 ${giorniCert <= 0 ? 'text-red-500' : giorniCert <= 7 ? 'text-amber-500' : 'text-on-surface-variant'}`}>{giorniCert <= 0 ? 'Scaduto' : `tra ${giorniCert}g`}</p>}</>
+                        : <span className="text-xs text-on-surface-variant">—</span>
+                      }
                     </td>
                     <td className="px-5 py-4">
                       <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{
@@ -143,14 +222,17 @@ function UsersPanel() {
                     <td className="px-5 py-4">
                       {isAdmin ? (
                         <span className="text-xs text-on-surface-variant">—</span>
-                      ) : (
-                        <button onClick={() => togglePrenotazioni(u.id, u.prenotazioni_sbloccate)}
-                          className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all ${u.prenotazioni_sbloccate ? 'bg-green-100 text-green-700 hover:bg-red-50 hover:text-red-600' : 'bg-amber-50 text-amber-700 hover:bg-green-100 hover:text-green-700'}`}
+                      ) : u.prenotazioni_sbloccate ? (
+                        <button onClick={() => blocca(u.id)}
+                          className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all bg-green-100 text-green-700 hover:bg-red-50 hover:text-red-600"
                         >
-                          {u.prenotazioni_sbloccate
-                            ? <><CheckCircle2 size={12} /> Sbloccate</>
-                            : <><XCircle size={12} /> Bloccate — Sblocca</>
-                          }
+                          <CheckCircle2 size={12} /> Sbloccate
+                        </button>
+                      ) : (
+                        <button onClick={() => setUnlockTarget(u)}
+                          className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all bg-amber-50 text-amber-700 hover:bg-amber-100"
+                        >
+                          <XCircle size={12} /> Bloccate — Sblocca
                         </button>
                       )}
                     </td>
@@ -161,6 +243,11 @@ function UsersPanel() {
           </table>
         </div>
       </div>
+      <AnimatePresence>
+        {unlockTarget && (
+          <UnlockModal utente={unlockTarget} onClose={() => setUnlockTarget(null)} onDone={() => { setUnlockTarget(null); load(); }} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

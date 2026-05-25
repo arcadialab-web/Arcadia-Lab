@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
-import { User, Lock, Bell, Shield, Trash2, CheckCircle2 } from 'lucide-react';
+import { User, Lock, Bell, Shield, Trash2, CheckCircle2, Settings2 } from 'lucide-react';
 
 const card = 'bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-6 shadow-sm';
 
@@ -31,6 +31,21 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
   const [profileForm, setProfileForm] = useState({ nome: '', cognome: '', telefono: '', bio: '' });
   const [passwordForm, setPasswordForm] = useState({ nuova: '', conferma: '' });
   const [notifications, setNotifications] = useState({ emailLezioni: true, emailPromo: false, emailScadenza: true });
+  const [requireCert, setRequireCert] = useState(true);
+  const [certSaving, setCertSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    supabase.from('site_settings').select('value').eq('key', 'require_medical_cert').single()
+      .then(({ data }) => { if (data) setRequireCert(data.value === 'true'); });
+  }, [isAdmin]);
+
+  const saveRequireCert = async (val: boolean) => {
+    setCertSaving(true);
+    await supabase.from('site_settings').upsert({ key: 'require_medical_cert', value: String(val) }, { onConflict: 'key' });
+    setRequireCert(val);
+    setCertSaving(false);
+  };
 
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -210,6 +225,28 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
           </div>
         </div>
       </Section>
+
+      {/* Impostazioni admin */}
+      {isAdmin && (
+        <Section title="Gestione studio" description="Configurazione delle regole operative" icon={<Settings2 size={17} className="text-primary" strokeWidth={1.5} />}>
+          <div className="flex items-start justify-between gap-4 py-2">
+            <div>
+              <p className="text-sm font-semibold text-on-surface">Richiedi certificato medico</p>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                Se attivo, l'abbonamento resta in sospeso finché l'admin non sblocca manualmente l'utente dopo aver ricevuto il certificato.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={certSaving}
+              onClick={() => saveRequireCert(!requireCert)}
+              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-all duration-300 disabled:opacity-60 ${requireCert ? 'bg-primary' : 'bg-outline'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${requireCert ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+        </Section>
+      )}
 
       {/* Zona pericolosa */}
       <Section title="Zona pericolosa" description="Azioni irreversibili sull'account" icon={<Trash2 size={17} className="text-red-500" strokeWidth={1.5} />}>

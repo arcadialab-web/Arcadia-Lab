@@ -177,7 +177,29 @@ Deno.serve(async (req) => {
     console.log(`✅ Reminder tessera ${giorni}gg: ${sent} email`);
   }
 
-  return new Response(JSON.stringify({ sent: totalSent, details: results }), {
+  // ── Sospendi abbonamenti con certificato scaduto ─────────────
+  const oggiStr = oggi.toISOString().split('T')[0];
+  const { data: certScaduti } = await supabase
+    .from('profiles')
+    .select('id')
+    .lt('cert_medico_scadenza', oggiStr)
+    .eq('prenotazioni_sbloccate', true);
+
+  for (const prof of certScaduti ?? []) {
+    // Blocca le prenotazioni
+    await supabase.from('profiles').update({
+      prenotazioni_sbloccate: false,
+    }).eq('id', prof.id);
+
+    // Sospendi abbonamento attivo e salva paused_at
+    await supabase.from('subscriptions').update({
+      stato:     'sospeso',
+      paused_at: oggiStr,
+    }).eq('user_id', prof.id).eq('stato', 'attivo');
+  }
+  console.log(`✅ Certificati scaduti: ${certScaduti?.length ?? 0} utenti bloccati`);
+
+  return new Response(JSON.stringify({ sent: totalSent, details: results, cert_sospesi: certScaduti?.length ?? 0 }), {
     status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 });
