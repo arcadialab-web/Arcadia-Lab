@@ -1,7 +1,135 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Pencil, Trash2, X, Check, AlertCircle, Users, Search, Phone, Mail, Hash } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, AlertCircle, Users, Search, Phone, Mail, Hash, Upload, Image, ChevronDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+
+const BUCKET = 'eventi';
+
+// ── Selettore immagine (upload + galleria storage) ────────────
+function ImagePicker({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const [tab, setTab]           = useState<'upload' | 'gallery'>('upload');
+  const [gallery, setGallery]   = useState<{ name: string; url: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [loadingGallery, setLoadingGallery] = useState(false);
+  const [open, setOpen]         = useState(false);
+  const fileRef                 = useRef<HTMLInputElement>(null);
+
+  const loadGallery = async () => {
+    setLoadingGallery(true);
+    const { data } = await supabase.storage.from(BUCKET).list('', { limit: 50, sortBy: { column: 'created_at', order: 'desc' } });
+    const items = (data ?? [])
+      .filter(f => f.name.match(/\.(jpg|jpeg|png|webp|gif)$/i))
+      .map(f => ({
+        name: f.name,
+        url:  supabase.storage.from(BUCKET).getPublicUrl(f.name).data.publicUrl,
+      }));
+    setGallery(items);
+    setLoadingGallery(false);
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const ext  = file.name.split('.').pop();
+    const path = `evento_${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+    if (!error) {
+      const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+      onChange(data.publicUrl);
+      setOpen(false);
+    } else {
+      alert('Errore upload: ' + error.message);
+    }
+    setUploading(false);
+    e.target.value = '';
+  };
+
+  const inp = 'w-full bg-surface border border-outline-variant rounded-2xl px-4 py-3 text-on-surface text-sm placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all';
+
+  return (
+    <div className="space-y-2">
+      {/* Preview */}
+      {value && (
+        <div className="relative w-full h-36 rounded-2xl overflow-hidden border border-outline-variant/30">
+          <img src={value} alt="Preview" className="w-full h-full object-cover" />
+          <button type="button" onClick={() => onChange('')}
+            className="absolute top-2 right-2 w-7 h-7 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-red-500 transition-colors"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
+      {/* Bottone apri picker */}
+      <button type="button" onClick={() => { setOpen(!open); if (!open) loadGallery(); }}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 rounded-2xl border border-outline-variant/50 text-sm text-on-surface-variant hover:border-primary/40 hover:text-primary transition-all"
+      >
+        <span className="flex items-center gap-2">
+          <Image size={15} />
+          {value ? 'Cambia immagine' : 'Scegli o carica immagine'}
+        </span>
+        <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Picker dropdown */}
+      {open && (
+        <div className="border border-outline-variant/30 rounded-2xl overflow-hidden bg-surface-container-low">
+          {/* Tab bar */}
+          <div className="flex border-b border-outline-variant/20">
+            {(['upload', 'gallery'] as const).map(t => (
+              <button key={t} type="button" onClick={() => setTab(t)}
+                className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${tab === t ? 'bg-primary text-white' : 'text-on-surface-variant hover:text-on-surface'}`}
+              >
+                {t === 'upload' ? '⬆ Carica nuova' : '🖼 Dalla galleria'}
+              </button>
+            ))}
+          </div>
+
+          {tab === 'upload' && (
+            <div className="p-4">
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+              <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+                className="w-full flex flex-col items-center gap-2 py-8 border-2 border-dashed border-outline-variant/40 rounded-2xl hover:border-primary/40 hover:bg-primary/4 transition-all text-on-surface-variant hover:text-primary disabled:opacity-50"
+                style={{ background: uploading ? 'rgba(181,106,86,0.04)' : undefined }}
+              >
+                <Upload size={24} strokeWidth={1.5} />
+                <span className="text-sm font-semibold">{uploading ? 'Caricamento...' : 'Clicca per caricare'}</span>
+                <span className="text-xs">JPG, PNG, WebP — max 5MB</span>
+              </button>
+            </div>
+          )}
+
+          {tab === 'gallery' && (
+            <div className="p-3">
+              {loadingGallery ? (
+                <p className="text-center py-6 text-xs text-on-surface-variant">Caricamento galleria...</p>
+              ) : gallery.length === 0 ? (
+                <p className="text-center py-6 text-xs text-on-surface-variant font-serif italic">Nessuna immagine nello storage.<br/>Carica la prima dalla tab "Carica nuova".</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
+                  {gallery.map(img => (
+                    <button key={img.name} type="button"
+                      onClick={() => { onChange(img.url); setOpen(false); }}
+                      className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${value === img.url ? 'border-primary' : 'border-transparent hover:border-primary/40'}`}
+                    >
+                      <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
+                      {value === img.url && (
+                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                          <Check size={16} className="text-primary" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface SpecialEvent {
   id: string;
@@ -113,8 +241,8 @@ function EventModal({ event, onClose, onSave }: {
             </div>
           </div>
           <div>
-            <label className={lbl}>URL immagine</label>
-            <input className={inp} type="url" value={form.immagine_url ?? ''} onChange={e => set('immagine_url', e.target.value)} placeholder="https://..." />
+            <label className={lbl}>Immagine evento</label>
+            <ImagePicker value={form.immagine_url ?? ''} onChange={url => set('immagine_url', url)} />
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -265,6 +393,8 @@ export default function EventsManagementPanel() {
   const [participants, setParticipants] = useState<SpecialEvent | null>(null);
   const [msg, setMsg]           = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [filter, setFilter]     = useState<'tutti' | 'prossimi' | 'passati'>('prossimi');
+  const [heroImage, setHeroImage] = useState('');
+  const [savingHero, setSavingHero] = useState(false);
 
   const notify = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 3000);
@@ -272,9 +402,26 @@ export default function EventsManagementPanel() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('special_events').select('*').order('data_evento', { ascending: false });
-    setEvents(data || []);
+    const [{ data: ev }, { data: setting }] = await Promise.all([
+      supabase.from('special_events').select('*').order('data_evento', { ascending: false }),
+      supabase.from('site_settings').select('value').eq('key', 'events_hero_image').single(),
+    ]);
+    setEvents(ev || []);
+    setHeroImage(setting?.value ?? '');
     setLoading(false);
+  };
+
+  const saveHeroImage = async (url: string) => {
+    setSavingHero(true);
+    const { error } = await supabase
+      .from('site_settings')
+      .upsert({ key: 'events_hero_image', value: url || null }, { onConflict: 'key' });
+    setSavingHero(false);
+    if (error) {
+      notify('error', 'Errore salvataggio immagine: ' + error.message);
+    } else {
+      notify('success', 'Immagine homepage salvata.');
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -313,6 +460,15 @@ export default function EventsManagementPanel() {
 
   return (
     <div className="space-y-5">
+
+      {/* Immagine homepage sezione eventi */}
+      <div className="bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-5">
+        <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-1">Immagine homepage — sezione "Eventi Speciali"</p>
+        <p className="text-xs text-on-surface-variant mb-4">Scegli l'immagine di sfondo che appare nella sezione "Oltre le lezioni" nella home page.</p>
+        <ImagePicker value={heroImage} onChange={url => { setHeroImage(url); saveHeroImage(url); }} />
+        {savingHero && <p className="text-xs text-primary mt-2">Salvataggio...</p>}
+      </div>
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex gap-2">
           {(['prossimi', 'tutti', 'passati'] as const).map(f => (

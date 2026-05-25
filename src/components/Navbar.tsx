@@ -30,7 +30,7 @@ export default function Navbar() {
     { name: 'Chi sono', href: '/#chi-sono', id: 'chi-sono' },
     { name: 'Studio', href: '/#studio', id: 'studio' },
     { name: 'Corsi', href: '/#courses', id: 'courses' },
-    { name: 'Workshop', href: '/#workshops', id: 'workshops' },
+    { name: 'Workshop', href: '/workshops', id: 'workshops' },
     { name: 'Abbonamenti', href: '/#pricing', id: 'pricing' },
   ];
 
@@ -43,6 +43,11 @@ export default function Navbar() {
   };
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    // link a pagine dedicate non vanno intercettati
+    if (id === 'workshops') {
+      if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+      return;
+    }
     if (location.pathname === '/') {
       e.preventDefault();
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });

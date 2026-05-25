@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
+import WorkshopsPage from './pages/WorkshopsPage';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import PaymentSuccess from './pages/PaymentSuccess';
@@ -94,6 +95,7 @@ export default function App() {
           <Route path="/auth" element={<Auth />} />
           <Route path="/pagamento-ok" element={<PaymentSuccess />} />
           <Route path="/evento-ok" element={<EventSuccess />} />
+          <Route path="/workshops" element={<WorkshopsPage />} />
           <Route path="/dashboard" element={
             <ProtectedRoute><Dashboard /></ProtectedRoute>
           } />
