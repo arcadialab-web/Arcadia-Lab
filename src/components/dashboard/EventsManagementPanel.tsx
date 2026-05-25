@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Pencil, Trash2, X, Check, AlertCircle, Users, Search, Phone, Mail, Upload, Image, ChevronDown, ScanLine, UserCheck, UserX } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, AlertCircle, Users, Search, Phone, Mail, Upload, Image, ChevronDown, ScanLine, UserCheck, UserX, Bell } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { EventNotificationModal } from './EmailMarketingPanel';
 
 const BUCKET = 'eventi';
 
@@ -561,6 +562,7 @@ export default function EventsManagementPanel() {
   const [loading, setLoading]   = useState(true);
   const [modal, setModal]       = useState<Partial<SpecialEvent> | null | undefined>(undefined);
   const [participants, setParticipants] = useState<SpecialEvent | null>(null);
+  const [notifyEvent, setNotifyEvent]   = useState<SpecialEvent | null>(null);
   const [msg, setMsg]           = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [filter, setFilter]     = useState<'tutti' | 'prossimi' | 'passati'>('prossimi');
   const [heroImage, setHeroImage] = useState('');
@@ -719,10 +721,15 @@ export default function EventsManagementPanel() {
                     >
                       <Users size={12} /> Partecipanti
                     </button>
-                    <button onClick={() => setModal(ev)}
+                    <button onClick={() => setNotifyEvent(ev)}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider border border-outline-variant/40 text-on-surface-variant hover:border-primary/30 hover:text-primary transition-all"
                     >
-                      <Pencil size={12} /> Modifica
+                      <Bell size={12} /> Notifica
+                    </button>
+                    <button onClick={() => setModal(ev)}
+                      className="p-2 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:border-primary/30 hover:text-primary transition-all"
+                    >
+                      <Pencil size={12} />
                     </button>
                     <button onClick={() => handleDelete(ev.id)}
                       className="p-2 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:border-red-300 hover:text-red-500 transition-all"
@@ -740,6 +747,7 @@ export default function EventsManagementPanel() {
       <AnimatePresence>
         {modal !== undefined && <EventModal event={modal} onClose={() => setModal(undefined)} onSave={handleSave} />}
         {participants && <ParticipantsPanel event={participants} onClose={() => setParticipants(null)} />}
+        {notifyEvent && <EventNotificationModal event={notifyEvent} onClose={() => setNotifyEvent(null)} />}
       </AnimatePresence>
     </div>
   );

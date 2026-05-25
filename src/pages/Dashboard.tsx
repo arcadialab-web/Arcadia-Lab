@@ -6,7 +6,7 @@ import { X, ArrowRight, Loader2 } from 'lucide-react';
 import {
   LayoutDashboard, BarChart2, CreditCard, Users,
   Settings, CalendarCheck, BookOpen, Star, PackagePlus,
-  CheckCircle2, XCircle, Lock,
+  CheckCircle2, XCircle, Lock, Mail,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -20,6 +20,7 @@ import MyLessonsPanel from '../components/dashboard/MyLessonsPanel';
 import PlansManagementPanel from '../components/dashboard/PlansManagementPanel';
 import CoursesManagementPanel from '../components/dashboard/CoursesManagementPanel';
 import EventsManagementPanel from '../components/dashboard/EventsManagementPanel';
+import EmailMarketingPanel from '../components/dashboard/EmailMarketingPanel';
 
 const ADMIN_EMAILS = ['ai.danielcorso@gmail.com', 'arcadialabyoga@gmail.com'];
 
@@ -31,6 +32,7 @@ const adminNav = [
   { id: 'events',         label: 'Eventi Speciali',   icon: <Star size={17} strokeWidth={1.5} /> },
   { id: 'subscriptions',  label: 'Abbonamenti',       icon: <CreditCard size={17} strokeWidth={1.5} /> },
   { id: 'users',          label: 'Utenti',            icon: <Users size={17} strokeWidth={1.5} /> },
+  { id: 'email',          label: 'Email Marketing',   icon: <Mail size={17} strokeWidth={1.5} /> },
   { id: 'settings',       label: 'Impostazioni',      icon: <Settings size={17} strokeWidth={1.5} /> },
 ];
 
@@ -648,7 +650,7 @@ export default function Dashboard() {
     navigate(`/dashboard/${id}`, { replace: true });
   };
 
-  const validAdminSections = ['overview', 'analytics', 'plans', 'courses', 'events', 'subscriptions', 'users', 'settings'];
+  const validAdminSections = ['overview', 'analytics', 'plans', 'courses', 'events', 'subscriptions', 'users', 'email', 'settings'];
   const validUserSections  = ['overview', 'lessons', 'plan', 'bookings', 'events', 'settings'];
   const validSections = admin ? validAdminSections : validUserSections;
   const activeSection = validSections.includes(section) ? section : 'overview';
@@ -663,6 +665,7 @@ export default function Dashboard() {
         case 'events':         return <EventsManagementPanel />;
         case 'subscriptions':  return <SubscriptionsPanel />;
         case 'users':          return <UsersPanel />;
+        case 'email':          return <EmailMarketingPanel />;
         case 'settings':       return <SettingsPanel isAdmin />;
         default:               return <AdminDashboard />;
       }
