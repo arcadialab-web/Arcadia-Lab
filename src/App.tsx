@@ -13,6 +13,7 @@ import CookieBanner from './components/CookieBanner';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
+import { SiteSettingsProvider } from './context/SiteSettingsContext';
 import { supabase } from './lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -86,6 +87,7 @@ function LiveTracker() {
 export default function App() {
   return (
     <AuthProvider>
+      <SiteSettingsProvider>
       <Router>
         <PageTracker />
         <LiveTracker />
@@ -111,6 +113,7 @@ export default function App() {
         </Routes>
         <CookieBanner />
       </Router>
+      </SiteSettingsProvider>
     </AuthProvider>
   );
 }

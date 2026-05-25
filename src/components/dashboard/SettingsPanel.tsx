@@ -32,12 +32,20 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
   const [passwordForm, setPasswordForm] = useState({ nuova: '', conferma: '' });
   const [notifications, setNotifications] = useState({ emailLezioni: true, emailPromo: false, emailScadenza: true });
   const [requireCert, setRequireCert] = useState(true);
-  const [certSaving, setCertSaving] = useState(false);
+  const [certSaving, setCertSaving]   = useState(false);
+  const [preLancio, setPreLancio]     = useState(false);
+  const [preLancioSaving, setPreLancioSaving] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) return;
-    supabase.from('site_settings').select('value').eq('key', 'require_medical_cert').single()
-      .then(({ data }) => { if (data) setRequireCert(data.value === 'true'); });
+    supabase.from('site_settings').select('key, value')
+      .in('key', ['require_medical_cert', 'pre_lancio'])
+      .then(({ data }) => {
+        if (!data) return;
+        const map = Object.fromEntries(data.map(r => [r.key, r.value]));
+        if (map['require_medical_cert']) setRequireCert(map['require_medical_cert'] === 'true');
+        if (map['pre_lancio'])           setPreLancio(map['pre_lancio'] === 'true');
+      });
   }, [isAdmin]);
 
   const saveRequireCert = async (val: boolean) => {
@@ -45,6 +53,13 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
     await supabase.from('site_settings').upsert({ key: 'require_medical_cert', value: String(val) }, { onConflict: 'key' });
     setRequireCert(val);
     setCertSaving(false);
+  };
+
+  const savePreLancio = async (val: boolean) => {
+    setPreLancioSaving(true);
+    await supabase.from('site_settings').upsert({ key: 'pre_lancio', value: String(val) }, { onConflict: 'key' });
+    setPreLancio(val);
+    setPreLancioSaving(false);
   };
 
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -229,21 +244,43 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
       {/* Impostazioni admin */}
       {isAdmin && (
         <Section title="Gestione studio" description="Configurazione delle regole operative" icon={<Settings2 size={17} className="text-primary" strokeWidth={1.5} />}>
-          <div className="flex items-start justify-between gap-4 py-2">
-            <div>
-              <p className="text-sm font-semibold text-on-surface">Richiedi certificato medico</p>
-              <p className="text-xs text-on-surface-variant mt-0.5">
-                Se attivo, l'abbonamento resta in sospeso finché l'admin non sblocca manualmente l'utente dopo aver ricevuto il certificato.
-              </p>
+          <div className="space-y-5 divide-y divide-outline-variant/20">
+            <div className="flex items-start justify-between gap-4 py-2">
+              <div>
+                <p className="text-sm font-semibold text-on-surface">Richiedi certificato medico</p>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Se attivo, l'abbonamento resta in sospeso finché l'admin non sblocca manualmente l'utente dopo aver ricevuto il certificato.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={certSaving}
+                onClick={() => saveRequireCert(!requireCert)}
+                className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-all duration-300 disabled:opacity-60 ${requireCert ? 'bg-primary' : 'bg-outline'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${requireCert ? 'translate-x-5' : ''}`} />
+              </button>
             </div>
-            <button
-              type="button"
-              disabled={certSaving}
-              onClick={() => saveRequireCert(!requireCert)}
-              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-all duration-300 disabled:opacity-60 ${requireCert ? 'bg-primary' : 'bg-outline'}`}
-            >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${requireCert ? 'translate-x-5' : ''}`} />
-            </button>
+
+            <div className="flex items-start justify-between gap-4 pt-5">
+              <div>
+                <p className="text-sm font-semibold text-on-surface">Modalità pre-lancio</p>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Se attivo, il form in fondo alla home diventa un modulo di iscrizione al corso (senza pagamento). I bottoni "Inizia ora" e il link "Abbonamenti" reindirizzano al form anziché ai prezzi.
+                </p>
+                <span className={`inline-block mt-2 text-[10px] font-label uppercase tracking-widest px-2 py-0.5 rounded-full ${preLancio ? 'bg-amber-100 text-amber-700' : 'bg-surface-container text-on-surface-variant'}`}>
+                  {preLancio ? 'Pre-lancio attivo' : 'Sito in produzione'}
+                </span>
+              </div>
+              <button
+                type="button"
+                disabled={preLancioSaving}
+                onClick={() => savePreLancio(!preLancio)}
+                className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-all duration-300 disabled:opacity-60 ${preLancio ? 'bg-amber-500' : 'bg-outline'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${preLancio ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
           </div>
         </Section>
       )}

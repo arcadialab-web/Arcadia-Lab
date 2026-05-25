@@ -1,7 +1,9 @@
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import { useEffect, useState, useRef } from "react";
+import { useSiteSettings } from "../context/SiteSettingsContext";
 
 export default function Hero() {
+  const { preLancio } = useSiteSettings();
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLElement>(null);
@@ -100,7 +102,7 @@ export default function Hero() {
               whileHover={{ scale: 1.05, y: -5 }}
               whileTap={{ scale: 0.98 }}
               className="bg-primary text-white px-10 py-5 rounded-full font-bold tracking-wide shadow-2xl transition-all duration-300 flex items-center gap-3 border-none group hover:bg-opacity-90"
-              href="#pricing"
+              href={preLancio ? '#contacts' : '#pricing'}
             >
               <span>Inizia ora</span>
               <motion.span 

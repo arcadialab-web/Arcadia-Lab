@@ -12,6 +12,7 @@ function PersonIcon({ size = 16 }: { size?: number }) {
   );
 }
 import { useAuth } from '../context/AuthContext';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -19,6 +20,7 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { preLancio } = useSiteSettings();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -31,7 +33,7 @@ export default function Navbar() {
     { name: 'Studio', href: '/#studio', id: 'studio' },
     { name: 'Corsi', href: '/#courses', id: 'courses' },
     { name: 'Workshop', href: '/workshops', id: 'workshops' },
-    { name: 'Abbonamenti', href: '/#pricing', id: 'pricing' },
+    { name: preLancio ? 'Iscriviti' : 'Abbonamenti', href: preLancio ? '/#contacts' : '/#pricing', id: 'pricing' },
   ];
 
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
