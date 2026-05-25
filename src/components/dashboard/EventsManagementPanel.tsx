@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Pencil, Trash2, X, Check, AlertCircle, Users, Search, Phone, Mail, Hash, Upload, Image, ChevronDown, ScanLine, UserCheck, UserX } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, AlertCircle, Users, Search, Phone, Mail, Upload, Image, ChevronDown, ScanLine, UserCheck, UserX } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const BUCKET = 'eventi';
@@ -329,34 +329,38 @@ function ParticipantsPanel({ event, onClose }: { event: SpecialEvent; onClose: (
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
     >
-      <motion.div initial={{ opacity: 0, scale: 0.96, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }}
-        className="bg-surface w-full max-w-3xl rounded-[1.5rem] shadow-2xl flex flex-col max-h-[90vh]"
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="bg-surface w-full sm:max-w-3xl rounded-t-[1.5rem] sm:rounded-[1.5rem] shadow-2xl flex flex-col max-h-[95dvh] sm:max-h-[90vh]"
       >
         {/* Header */}
-        <div className="flex items-start justify-between px-6 py-5 border-b border-outline-variant/20 flex-shrink-0">
-          <div>
-            <h3 className="font-serif text-lg text-on-surface">{event.titolo}</h3>
+        <div className="flex items-start justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-outline-variant/20 flex-shrink-0">
+          <div className="min-w-0 pr-3">
+            <h3 className="font-serif text-base sm:text-lg text-on-surface truncate">{event.titolo}</h3>
             <p className="text-xs text-on-surface-variant mt-0.5">
-              {new Date(event.data_evento).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {new Date(event.data_evento).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
               {event.luogo && ` · ${event.luogo}`}
             </p>
           </div>
-          <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface flex-shrink-0"><X size={18} /></button>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant flex-shrink-0"><X size={16} /></button>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 px-6 py-4 border-b border-outline-variant/20 flex-shrink-0">
+        <div className="grid grid-cols-4 gap-2 px-4 sm:px-6 py-3 border-b border-outline-variant/20 flex-shrink-0">
           {[
-            { label: 'Iscritti',  value: attivi,                    color: '#8ba888' },
-            { label: 'Presenti',  value: presenti,                   color: '#4a9a4a' },
-            { label: 'Assenti',   value: assenti,                    color: '#e05050' },
-            { label: 'Incasso',   value: `€ ${totIncasso.toFixed(0)}`, color: '#2b2927' },
+            { label: 'Iscritti',  value: attivi,                      color: '#8ba888' },
+            { label: 'Presenti',  value: presenti,                     color: '#4a9a4a' },
+            { label: 'Assenti',   value: assenti,                      color: '#e05050' },
+            { label: 'Incasso',   value: `€${totIncasso.toFixed(0)}`,  color: '#2b2927' },
           ].map(s => (
-            <div key={s.label} className="text-center bg-surface-container-low rounded-2xl p-3">
-              <p className="text-2xl font-serif font-bold" style={{ color: s.color }}>{s.value}</p>
-              <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant mt-0.5">{s.label}</p>
+            <div key={s.label} className="text-center bg-surface-container-low rounded-xl p-2">
+              <p className="text-lg sm:text-2xl font-serif font-bold" style={{ color: s.color }}>{s.value}</p>
+              <p className="text-[9px] sm:text-[10px] font-label uppercase tracking-widest text-on-surface-variant">{s.label}</p>
             </div>
           ))}
         </div>
@@ -378,16 +382,16 @@ function ParticipantsPanel({ event, onClose }: { event: SpecialEvent; onClose: (
         {/* ── TAB: Lista iscritti ── */}
         {tab === 'lista' && (
           <>
-            <div className="px-6 py-3 border-b border-outline-variant/10 flex-shrink-0">
+            <div className="px-4 sm:px-6 py-3 border-b border-outline-variant/10 flex-shrink-0">
               <div className="relative">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" strokeWidth={1.5} />
                 <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="Cerca per nome, email, telefono, codice..."
+                  placeholder="Cerca nome, email, codice..."
                   className="w-full bg-surface-container-low border border-outline-variant/30 rounded-2xl pl-9 pr-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary transition-all"
                 />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-6 py-3">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3">
               {loading ? (
                 <div className="text-center py-12 font-serif italic text-on-surface-variant">Caricamento...</div>
               ) : filtered.length === 0 ? (
@@ -397,34 +401,37 @@ function ParticipantsPanel({ event, onClose }: { event: SpecialEvent; onClose: (
               ) : (
                 <div className="space-y-2">
                   {filtered.map(t => (
-                    <div key={t.id} className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${t.stato === 'presente' ? 'bg-green-50 border-green-200' : t.stato === 'assente' ? 'bg-red-50 border-red-200' : 'bg-surface-container-low border-outline-variant/20'}`}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
+                    <div key={t.id} className={`rounded-2xl border transition-all ${t.stato === 'presente' ? 'bg-green-50 border-green-200' : t.stato === 'assente' ? 'bg-red-50 border-red-200' : 'bg-surface-container-low border-outline-variant/20'}`}>
+                      {/* Riga principale */}
+                      <div className="flex items-center gap-3 p-3">
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary flex-shrink-0">
                           {(t.nome || '?').charAt(0).toUpperCase()}
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-on-surface truncate">{t.nome} {t.cognome}</p>
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="flex items-center gap-1 text-[11px] text-on-surface-variant"><Mail size={10} />{t.email}</span>
-                            {t.telefono && <span className="flex items-center gap-1 text-[11px] text-on-surface-variant"><Phone size={10} />{t.telefono}</span>}
-                            <span className="flex items-center gap-1 text-[11px] text-on-surface-variant font-mono"><Hash size={10} />{t.codice_ref}</span>
+                          <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                            <span className="text-[11px] text-on-surface-variant truncate">{t.email}</span>
+                            {t.is_abbonato && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(181,106,86,0.12)', color: '#b56a56' }}>Abb.</span>}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="font-mono text-[10px] text-on-surface-variant">{t.codice_ref}</span>
+                            <span className="text-[11px] font-bold text-on-surface-variant">· € {(t.prezzo_pagato || 0).toFixed(0)}</span>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0 ml-3">
-                        {t.is_abbonato && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(181,106,86,0.12)', color: '#b56a56' }}>Abb.</span>}
-                        <span className="text-[11px] font-bold text-on-surface-variant">€ {(t.prezzo_pagato || 0).toFixed(0)}</span>
+                      {/* Bottoni azione */}
+                      <div className="flex gap-2 px-3 pb-3">
                         <button
                           onClick={() => setStato(t.id, t.stato === 'presente' ? 'confermato' : 'presente')}
-                          className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-all border ${t.stato === 'presente' ? 'bg-green-500 text-white border-green-500' : 'bg-white border-outline-variant/40 text-on-surface-variant hover:bg-green-50 hover:border-green-400 hover:text-green-700'}`}
+                          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border ${t.stato === 'presente' ? 'bg-green-500 text-white border-green-500' : 'bg-white border-outline-variant/40 text-on-surface-variant active:bg-green-50'}`}
                         >
-                          {t.stato === 'presente' ? '✓ Presente' : 'Presente'}
+                          {t.stato === 'presente' ? '✓ Presente' : 'Segna presente'}
                         </button>
                         <button
                           onClick={() => setStato(t.id, t.stato === 'assente' ? 'confermato' : 'assente')}
-                          className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-all border ${t.stato === 'assente' ? 'bg-red-500 text-white border-red-500' : 'bg-white border-outline-variant/40 text-on-surface-variant hover:bg-red-50 hover:border-red-400 hover:text-red-600'}`}
+                          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border ${t.stato === 'assente' ? 'bg-red-500 text-white border-red-500' : 'bg-white border-outline-variant/40 text-on-surface-variant active:bg-red-50'}`}
                         >
-                          {t.stato === 'assente' ? '✗ Assente' : 'Assente'}
+                          {t.stato === 'assente' ? '✗ Assente' : 'Segna assente'}
                         </button>
                       </div>
                     </div>
