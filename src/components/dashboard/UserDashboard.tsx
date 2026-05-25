@@ -28,6 +28,7 @@ export default function UserDashboard({ userName }: { userName: string }) {
   const { user } = useAuth();
   const [loading, setLoading]         = useState(true);
   const [sub, setSub]                 = useState<any>(null);
+  const [tesseraScadenza, setTesseraScadenza] = useState<string | null>(null);
   const [presenzeMensili, setPresenze] = useState<{ settimana: string; presenze: number }[]>([]);
   const [prossimeLezioni, setProssime] = useState<any[]>([]);
   const [totaleFatte, setTotaleFatte] = useState(0);
@@ -85,7 +86,14 @@ export default function UserDashboard({ userName }: { userName: string }) {
 
     const presMese = bookingsMese?.filter(b => b.presenza).length || 0;
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('tessera_scadenza')
+      .eq('id', user.id)
+      .single();
+
     setSub(abbonamento);
+    setTesseraScadenza(profile?.tessera_scadenza ?? null);
     setPresenze(presenzeCalc);
     setProssime(lessons || []);
     setTotaleFatte(totBookings || 0);
@@ -94,6 +102,11 @@ export default function UserDashboard({ userName }: { userName: string }) {
   };
 
   useEffect(() => { load(); }, [user]);
+
+  const oggi = new Date(); oggi.setHours(0,0,0,0);
+  const tesseraDate     = tesseraScadenza ? new Date(tesseraScadenza) : null;
+  const tesseraGiorni   = tesseraDate ? Math.ceil((tesseraDate.getTime() - oggi.getTime()) / 86400000) : null;
+  const tesseraScaduta  = tesseraGiorni !== null && tesseraGiorni < 0;
 
   const lezioniTotali    = sub?.lezioni_totali || 0;
   const lezioniUsate     = sub?.lezioni_usate  || 0;
@@ -140,6 +153,26 @@ export default function UserDashboard({ userName }: { userName: string }) {
           </div>
         )}
       </motion.div>
+
+      {/* Banner tessera in scadenza / scaduta */}
+      {tesseraScaduta && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+          <p className="text-sm font-bold text-red-700 mb-1">Tessera associativa scaduta</p>
+          <p className="text-xs text-red-600">La tua tessera è scaduta. Acquista un nuovo abbonamento per rinnovarla e continuare a prenotare le lezioni.</p>
+          <a href="/#pricing" className="inline-block mt-3 text-xs font-bold text-red-700 underline">Rinnova abbonamento →</a>
+        </div>
+      )}
+      {!tesseraScaduta && tesseraGiorni !== null && tesseraGiorni <= 7 && (
+        <div className={`rounded-2xl p-4 border ${tesseraGiorni <= 3 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+          <p className={`text-sm font-bold mb-1 ${tesseraGiorni <= 3 ? 'text-red-700' : 'text-amber-800'}`}>
+            La tua tessera scade tra {tesseraGiorni} giorn{tesseraGiorni === 1 ? 'o' : 'i'}
+          </p>
+          <p className={`text-xs ${tesseraGiorni <= 3 ? 'text-red-600' : 'text-amber-700'}`}>
+            Rinnova l'abbonamento prima della scadenza per non interrompere le prenotazioni.
+          </p>
+          <a href="/#pricing" className={`inline-block mt-3 text-xs font-bold underline ${tesseraGiorni <= 3 ? 'text-red-700' : 'text-amber-800'}`}>Rinnova ora →</a>
+        </div>
+      )}
 
       {/* Nessun abbonamento */}
       {!sub && (
