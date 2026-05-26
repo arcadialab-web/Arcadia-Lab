@@ -214,7 +214,7 @@ function PlanRow({ plan }: { plan: Plan }) {
             onClick={handleClick}
             className="bg-primary text-white text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all shadow-sm"
           >
-            {preLancio ? 'Iscriviti' : 'Scegli'}
+            Scegli
           </motion.button>
         </div>
       </div>
@@ -243,7 +243,7 @@ function PlanButton({ plan, label = 'Inizia ora' }: { plan: Plan; label?: string
         whileTap={{ scale: 0.98 }}
         className="w-full py-4 text-center border-2 border-primary/20 hover:border-primary hover:bg-primary hover:text-white text-primary font-bold rounded-2xl transition-all duration-300"
       >
-        {preLancio ? 'Iscriviti' : label}
+        {label}
       </motion.button>
 
       <AnimatePresence>
