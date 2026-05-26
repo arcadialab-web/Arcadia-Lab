@@ -91,6 +91,13 @@ Deno.serve(async (req) => {
       .eq('email', emailNorm)
       .maybeSingle();
 
+    // Se l'email è già registrata blocca il checkout — deve fare login
+    if (profile) {
+      return new Response(JSON.stringify({ error: 'email_exists' }), {
+        status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const isNewUser = !profile;
 
     // 3. Controlla se ha già una tessera valida

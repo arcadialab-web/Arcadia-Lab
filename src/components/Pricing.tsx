@@ -63,6 +63,11 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
           include_tessera:  includeTessera || undefined,
         },
       });
+      if (data?.error === 'email_exists') {
+        setEmailEsistente(true);
+        setLoading(false);
+        return;
+      }
       if (fnError || !data?.url) throw new Error('Errore nella creazione del pagamento');
       window.location.href = data.url;
     } catch {
