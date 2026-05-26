@@ -636,7 +636,7 @@ function BookingsPanel() {
       supabase.from('courses').select('*').eq('is_attivo', true).order('giorno_settimana'),
       supabase.from('course_exceptions').select('*'),
       supabase.from('course_bookings').select('*').eq('user_id', user.id).eq('stato', 'confermata'),
-      supabase.from('subscriptions').select('id, lezioni_totali, lezioni_usate, stato').eq('user_id', user.id).in('stato', ['attivo', 'in_attesa']).maybeSingle(),
+      supabase.from('subscriptions').select('id, lezioni_totali, lezioni_usate, stato, plans(frequenza_sett)').eq('user_id', user.id).in('stato', ['attivo', 'in_attesa']).maybeSingle(),
       supabase.from('profiles').select('prenotazioni_sbloccate, tessera_scadenza').eq('id', user.id).single(),
     ]);
     setCourses(c || []);
@@ -654,6 +654,22 @@ function BookingsPanel() {
     if (!user || !sub) return;
     if (sub.lezioni_usate >= sub.lezioni_totali) {
       alert('Hai esaurito le lezioni del tuo abbonamento.'); return;
+    }
+    // Controlla limite settimanale in base al piano
+    const frequenza: number | null = sub.plans?.frequenza_sett ?? null;
+    if (frequenza) {
+      const slotDate = new Date(slot.dateStr + 'T12:00:00');
+      // Calcola lunedì e domenica della settimana dello slot
+      const dow = slotDate.getDay() === 0 ? 7 : slotDate.getDay();
+      const lun = new Date(slotDate); lun.setDate(slotDate.getDate() - dow + 1); lun.setHours(0,0,0,0);
+      const dom = new Date(lun); dom.setDate(lun.getDate() + 6); dom.setHours(23,59,59,999);
+      const lunStr = lun.toISOString().split('T')[0];
+      const domStr = dom.toISOString().split('T')[0];
+      const prenoteSettimana = myBookings.filter(b => b.data >= lunStr && b.data <= domStr).length;
+      if (prenoteSettimana >= frequenza) {
+        alert(`Il tuo abbonamento prevede ${frequenza} lezione${frequenza > 1 ? 'i' : 'e'} a settimana. Hai già raggiunto il limite per questa settimana.`);
+        return;
+      }
     }
     setConfirmSlot(slot);
   };
@@ -763,8 +779,18 @@ function BookingsPanel() {
               const key    = slot.course.id + slot.dateStr;
               const booked = myBookings.find(b => b.course_id === slot.course.id && b.data === slot.dateStr);
               const isLoading = booking === key;
+              const frequenza: number | null = sub.plans?.frequenza_sett ?? null;
+              let settimanapiena = false;
+              if (frequenza && !booked) {
+                const slotDate = new Date(slot.dateStr + 'T12:00:00');
+                const dow = slotDate.getDay() === 0 ? 7 : slotDate.getDay();
+                const lun = new Date(slotDate); lun.setDate(slotDate.getDate() - dow + 1);
+                const lunStr = lun.toISOString().split('T')[0];
+                const domStr = new Date(lun.getTime() + 6 * 86400000).toISOString().split('T')[0];
+                settimanapiena = myBookings.filter(b => b.data >= lunStr && b.data <= domStr).length >= frequenza;
+              }
               return (
-                <div key={key} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${booked ? 'bg-green-50 border-green-200' : 'bg-surface border-outline-variant/20 hover:border-primary/30'}`}>
+                <div key={key} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${booked ? 'bg-green-50 border-green-200' : settimanapiena ? 'bg-surface-container-low border-outline-variant/20 opacity-60' : 'bg-surface border-outline-variant/20 hover:border-primary/30'}`}>
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: slot.course.colore }} />
                     <div>
@@ -774,6 +800,7 @@ function BookingsPanel() {
                         {slot.date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}
                         {' · '}{slot.course.ora_inizio.slice(0,5)}–{slot.course.ora_fine.slice(0,5)}
                       </p>
+                      {settimanapiena && <p className="text-[10px] text-on-surface-variant mt-0.5">Limite settimanale raggiunto</p>}
                     </div>
                   </div>
                   {booked ? (
@@ -782,9 +809,9 @@ function BookingsPanel() {
                       ✓ Prenotata — Disdici
                     </button>
                   ) : (
-                    <button onClick={() => prenota(slot)} disabled={isLoading || lezioniRimaste <= 0}
+                    <button onClick={() => prenota(slot)} disabled={isLoading || lezioniRimaste <= 0 || settimanapiena}
                       className="text-xs font-bold px-3 py-1.5 rounded-full bg-primary text-white hover:bg-opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                      {isLoading ? '...' : lezioniRimaste <= 0 ? 'Esaurite' : 'Prenota'}
+                      {isLoading ? '...' : lezioniRimaste <= 0 ? 'Esaurite' : settimanapiena ? 'Limite' : 'Prenota'}
                     </button>
                   )}
                 </div>
