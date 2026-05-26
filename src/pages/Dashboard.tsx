@@ -638,9 +638,7 @@ function BookingsPanel() {
       data: slot.dateStr, subscription_id: sub.id,
     });
     if (!error) {
-      await supabase.from('subscriptions')
-        .update({ lezioni_usate: sub.lezioni_usate + 1 })
-        .eq('id', sub.id);
+      await supabase.rpc('increment_lezioni_usate', { sub_id: sub.id });
     } else if (error.code === '23505') {
       alert('Hai già prenotato questa lezione.');
     }
@@ -648,12 +646,10 @@ function BookingsPanel() {
     load();
   };
 
-  const disdici = async (bookingId: string, subId: string, lezioniUsate: number) => {
+  const disdici = async (bookingId: string, subId: string) => {
     if (!confirm('Vuoi disdire questa prenotazione?')) return;
     await supabase.from('course_bookings').update({ stato: 'cancellata' }).eq('id', bookingId);
-    await supabase.from('subscriptions')
-      .update({ lezioni_usate: Math.max(0, lezioniUsate - 1) })
-      .eq('id', subId);
+    await supabase.rpc('decrement_lezioni_usate', { sub_id: subId });
     load();
   };
 
@@ -751,7 +747,7 @@ function BookingsPanel() {
                     </div>
                   </div>
                   {booked ? (
-                    <button onClick={() => disdici(booked.id, sub.id, sub.lezioni_usate)}
+                    <button onClick={() => disdici(booked.id, sub.id)}
                       className="text-xs text-green-700 font-bold hover:text-red-500 transition-colors px-3 py-1.5 rounded-full bg-green-100 hover:bg-red-50">
                       ✓ Prenotata — Disdici
                     </button>
@@ -789,7 +785,7 @@ function BookingsPanel() {
                         </p>
                       </div>
                     </div>
-                    <button onClick={() => disdici(b.id, sub.id, sub.lezioni_usate)}
+                    <button onClick={() => disdici(b.id, sub.id)}
                       className="text-xs text-on-surface-variant hover:text-red-500 transition-colors font-label uppercase tracking-wider">
                       Disdici
                     </button>

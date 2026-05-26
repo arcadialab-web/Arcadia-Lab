@@ -86,8 +86,27 @@ function buildReminderHtml(opts: {
 </body></html>`;
 }
 
+async function verifyAdmin(req: Request): Promise<boolean> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) return false;
+  const jwt = authHeader.replace('Bearer ', '');
+  const caller = createClient(Deno.env.get('SUPABASE_URL')!, jwt);
+  const { data: { user }, error } = await caller.auth.getUser();
+  if (error || !user) return false;
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  return profile?.role === 'admin';
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  // Il cron job di pg_cron non passa JWT — bypassa la verifica solo per GET senza header
+  const isScheduled = req.method === 'GET' && !req.headers.get('Authorization');
+  if (!isScheduled && !await verifyAdmin(req)) {
+    return new Response(JSON.stringify({ error: 'Non autorizzato' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   const siteUrl = Deno.env.get('SITE_URL') ?? 'https://www.arcadialab.it';
 

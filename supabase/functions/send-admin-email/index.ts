@@ -62,8 +62,25 @@ function buildHtml(subject: string, body: string, ctaUrl?: string, ctaLabel?: st
 </body></html>`;
 }
 
+async function verifyAdmin(req: Request): Promise<boolean> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) return false;
+  const jwt = authHeader.replace('Bearer ', '');
+  const caller = createClient(Deno.env.get('SUPABASE_URL')!, jwt);
+  const { data: { user }, error } = await caller.auth.getUser();
+  if (error || !user) return false;
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  return profile?.role === 'admin';
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  if (!await verifyAdmin(req)) {
+    return new Response(JSON.stringify({ error: 'Non autorizzato' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   try {
     const {

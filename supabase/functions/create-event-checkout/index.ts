@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
-    const { event_id, nome, cognome, email, telefono, user_id } = await req.json();
+    const { event_id, nome, cognome, email, telefono } = await req.json();
 
     if (!event_id || !nome || !email) {
       return new Response(JSON.stringify({ error: 'Dati mancanti' }), {
@@ -26,6 +26,15 @@ Deno.serve(async (req) => {
 
     const emailNorm = email.toLowerCase().trim();
     const appUrl   = Deno.env.get('SITE_URL') ?? 'https://www.arcadialab.it';
+
+    // Estrai user_id dal JWT — mai dal body
+    let user_id: string | null = null;
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const caller = createClient(Deno.env.get('SUPABASE_URL')!, authHeader.replace('Bearer ', ''));
+      const { data: { user } } = await caller.auth.getUser();
+      if (user) user_id = user.id;
+    }
 
     // 1. Leggi l'evento
     const { data: evento, error: evErr } = await supabase
