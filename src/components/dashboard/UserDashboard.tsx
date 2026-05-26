@@ -39,15 +39,14 @@ export default function UserDashboard({ userName }: { userName: string }) {
     setLoading(true);
 
     const oggi = new Date();
-    const startMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1).toISOString();
+    const oggiStr = oggi.toISOString().split('T')[0];
+    const startMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1).toISOString().split('T')[0];
 
     const [
       { data: abbonamento },
-      { data: bookingsMese },
-      { count: totBookings },
-      { data: lessons },
+      { data: profile },
+      { data: allBookings },
     ] = await Promise.all([
-      // Abbonamento attivo o in attesa
       supabase.from('subscriptions')
         .select('*, plans(nome)')
         .eq('user_id', user.id)
@@ -55,49 +54,37 @@ export default function UserDashboard({ userName }: { userName: string }) {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
-      // Prenotazioni del mese corrente
-      supabase.from('bookings')
-        .select('created_at, presenza')
+      supabase.from('profiles')
+        .select('tessera_scadenza')
+        .eq('id', user.id)
+        .single(),
+      supabase.from('course_bookings')
+        .select('id, data, stato, courses(id, nome, ora_inizio, ora_fine, colore)')
         .eq('user_id', user.id)
-        .gte('created_at', startMese),
-      // Totale presenze di sempre
-      supabase.from('bookings')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('presenza', true),
-      // Prossime lezioni disponibili
-      supabase.from('lessons')
-        .select('*')
-        .eq('is_attiva', true)
-        .gte('data_ora', oggi.toISOString())
-        .order('data_ora', { ascending: true })
-        .limit(3),
+        .eq('stato', 'confermata')
+        .order('data', { ascending: true }),
     ]);
 
-    // Presenze per settimana nel mese corrente
+    const bookings = allBookings ?? [];
+    const prossime = bookings.filter(b => b.data >= oggiStr).slice(0, 3);
+    const bookingsMese = bookings.filter(b => b.data >= startMese && b.data < oggiStr);
+
+    // Presenze per settimana nel mese corrente (lezioni passate)
     const settimane = ['Sett 1', 'Sett 2', 'Sett 3', 'Sett 4'];
     const presenzeCalc = settimane.map((settimana, idx) => ({
       settimana,
-      presenze: bookingsMese?.filter(b => {
-        const day = new Date(b.created_at).getDate();
-        return b.presenza && Math.floor((day - 1) / 7) === idx;
-      }).length || 0,
+      presenze: bookingsMese.filter(b => {
+        const day = new Date(b.data + 'T12:00:00').getDate();
+        return Math.floor((day - 1) / 7) === idx;
+      }).length,
     }));
-
-    const presMese = bookingsMese?.filter(b => b.presenza).length || 0;
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('tessera_scadenza')
-      .eq('id', user.id)
-      .single();
 
     setSub(abbonamento);
     setTesseraScadenza(profile?.tessera_scadenza ?? null);
     setPresenze(presenzeCalc);
-    setProssime(lessons || []);
-    setTotaleFatte(totBookings || 0);
-    setPresenzeMese(presMese);
+    setProssime(prossime);
+    setTotaleFatte(bookings.filter(b => b.data < oggiStr).length);
+    setPresenzeMese(bookingsMese.length);
     setLoading(false);
   };
 
@@ -319,33 +306,28 @@ export default function UserDashboard({ userName }: { userName: string }) {
             <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-4">Lezioni disponibili</p>
             {prossimeLezioni.length === 0 ? (
               <div className="text-center py-8 text-on-surface-variant font-serif italic text-sm">
-                Nessuna lezione programmata al momento
+                Nessuna lezione prenotata
               </div>
             ) : (
               <div className="space-y-2">
-                {prossimeLezioni.map((l, i) => (
-                  <motion.div key={l.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 + i * 0.07 }}
-                    className="flex items-center justify-between p-3 sm:p-4 bg-surface rounded-2xl border border-outline-variant/20 hover:border-primary/30 group transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${T}12` }}>
-                        <CalendarCheck size={14} style={{ color: T }} strokeWidth={1.5} />
+                {prossimeLezioni.map((b, i) => {
+                  const course = (b as any).courses;
+                  const dataFmt = new Date(b.data + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+                  const ore = course ? `${course.ora_inizio?.slice(0,5)}–${course.ora_fine?.slice(0,5)}` : '';
+                  return (
+                    <motion.div key={b.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 + i * 0.07 }}
+                      className="flex items-center gap-3 p-3 sm:p-4 bg-surface rounded-2xl border border-outline-variant/20 hover:border-primary/30 group transition-all"
+                    >
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: course?.colore ? course.colore + '22' : `${T}12` }}>
+                        <CalendarCheck size={14} style={{ color: course?.colore ?? T }} strokeWidth={1.5} />
                       </div>
                       <div>
-                        <p className="font-bold text-xs sm:text-sm text-on-surface group-hover:text-primary transition-colors">{l.titolo}</p>
-                        <p className="text-[10px] sm:text-xs text-on-surface-variant">
-                          {new Date(l.data_ora).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' })} · {new Date(l.data_ora).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                        <p className="font-bold text-xs sm:text-sm text-on-surface group-hover:text-primary transition-colors">{course?.nome ?? '—'}</p>
+                        <p className="text-[10px] sm:text-xs text-on-surface-variant">{dataFmt}{ore && ` · ${ore}`}</p>
                       </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-[9px] sm:text-[10px] font-label uppercase tracking-wider text-on-surface-variant">Posti</p>
-                      <p className="font-bold text-sm mt-0.5" style={{ color: l.posti_disponibili <= 2 ? '#e57373' : S }}>
-                        {l.posti_disponibili}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </motion.div>
