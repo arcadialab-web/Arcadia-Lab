@@ -634,7 +634,7 @@ function BookingsPanel() {
       supabase.from('courses').select('*').eq('is_attivo', true).order('giorno_settimana'),
       supabase.from('course_exceptions').select('*'),
       supabase.from('course_bookings').select('*').eq('user_id', user.id).eq('stato', 'confermata'),
-      supabase.from('subscriptions').select('id, lezioni_totali, lezioni_usate').eq('user_id', user.id).eq('stato', 'attivo').maybeSingle(),
+      supabase.from('subscriptions').select('id, lezioni_totali, lezioni_usate, stato').eq('user_id', user.id).in('stato', ['attivo', 'in_attesa']).maybeSingle(),
       supabase.from('profiles').select('prenotazioni_sbloccate, tessera_scadenza').eq('id', user.id).single(),
     ]);
     setCourses(c || []);
