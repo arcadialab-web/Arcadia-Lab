@@ -86,6 +86,8 @@ function buildReminderHtml(opts: {
 </body></html>`;
 }
 
+const ADMIN_EMAILS = ['ai.danielcorso@gmail.com', 'arcadialabyoga@gmail.com'];
+
 async function verifyAdmin(req: Request): Promise<boolean> {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) return false;
@@ -93,6 +95,7 @@ async function verifyAdmin(req: Request): Promise<boolean> {
   const caller = createClient(Deno.env.get('SUPABASE_URL')!, jwt);
   const { data: { user }, error } = await caller.auth.getUser();
   if (error || !user) return false;
+  if (ADMIN_EMAILS.includes(user.email ?? '')) return true;
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   return profile?.role === 'admin';
 }

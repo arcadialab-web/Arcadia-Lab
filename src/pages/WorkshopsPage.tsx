@@ -47,7 +47,7 @@ function TicketModal({ evento, onClose, isAbbonato }: {
     setError('');
     try {
       const { data, error: fnErr } = await supabase.functions.invoke('create-event-checkout', {
-        body: { event_id: evento.id, nome: form.nome, cognome: form.cognome, email: form.email, telefono: form.telefono, user_id: user?.id ?? null },
+        body: { event_id: evento.id, nome: form.nome, cognome: form.cognome, email: form.email, telefono: form.telefono },
       });
       if (fnErr || !data?.url) throw new Error();
       window.location.href = data.url;
