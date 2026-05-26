@@ -22,6 +22,7 @@ import CoursesManagementPanel from '../components/dashboard/CoursesManagementPan
 import EventsManagementPanel from '../components/dashboard/EventsManagementPanel';
 import EmailMarketingPanel from '../components/dashboard/EmailMarketingPanel';
 import LeadsPanel from '../components/dashboard/LeadsPanel';
+import CourseBookingsPanel from '../components/dashboard/CourseBookingsPanel';
 
 const ADMIN_EMAILS = ['ai.danielcorso@gmail.com', 'arcadialabyoga@gmail.com'];
 
@@ -33,6 +34,7 @@ const adminNav = [
   { id: 'events',         label: 'Eventi Speciali',   icon: <Star size={17} strokeWidth={1.5} /> },
   { id: 'subscriptions',  label: 'Abbonamenti',       icon: <CreditCard size={17} strokeWidth={1.5} /> },
   { id: 'users',          label: 'Utenti',            icon: <Users size={17} strokeWidth={1.5} /> },
+  { id: 'bookings',       label: 'Prenotazioni',      icon: <BookOpen size={17} strokeWidth={1.5} /> },
   { id: 'email',          label: 'Email Marketing',   icon: <Mail size={17} strokeWidth={1.5} /> },
   { id: 'leads',          label: 'Contatti',          icon: <Inbox size={17} strokeWidth={1.5} /> },
   { id: 'settings',       label: 'Impostazioni',      icon: <Settings size={17} strokeWidth={1.5} /> },
@@ -885,7 +887,7 @@ export default function Dashboard() {
     navigate(`/dashboard/${id}`, { replace: true });
   };
 
-  const validAdminSections = ['overview', 'analytics', 'plans', 'courses', 'events', 'subscriptions', 'users', 'email', 'leads', 'settings'];
+  const validAdminSections = ['overview', 'analytics', 'plans', 'courses', 'events', 'subscriptions', 'users', 'bookings', 'email', 'leads', 'settings'];
   const validUserSections  = ['overview', 'lessons', 'plan', 'bookings', 'events', 'settings'];
   const validSections = admin ? validAdminSections : validUserSections;
   const activeSection = validSections.includes(section) ? section : 'overview';
@@ -901,6 +903,7 @@ export default function Dashboard() {
         case 'subscriptions':  return <SubscriptionsPanel />;
         case 'users':          return <UsersPanel />;
         case 'email':          return <EmailMarketingPanel initialTab={subsection === 'storico' ? 'storico' : 'componi'} />;
+        case 'bookings':       return <CourseBookingsPanel />;
         case 'leads':          return <LeadsPanel />;
         case 'settings':       return <SettingsPanel isAdmin />;
         default:               return <AdminDashboard />;
