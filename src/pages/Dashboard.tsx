@@ -622,6 +622,7 @@ function BookingsPanel() {
   const [tesseraScadenza, setTesseraScadenza] = useState<string | null>(null);
   const [loading, setLoading]         = useState(true);
   const [booking, setBooking]         = useState<string | null>(null);
+  const [confirmSlot, setConfirmSlot] = useState<{ course: any; dateStr: string } | null>(null);
 
   const load = async () => {
     if (!user) return;
@@ -652,6 +653,13 @@ function BookingsPanel() {
     if (sub.lezioni_usate >= sub.lezioni_totali) {
       alert('Hai esaurito le lezioni del tuo abbonamento.'); return;
     }
+    setConfirmSlot(slot);
+  };
+
+  const confermaPrenota = async () => {
+    if (!confirmSlot || !user || !sub) return;
+    const slot = confirmSlot;
+    setConfirmSlot(null);
     setBooking(slot.course.id + slot.dateStr);
     const { error } = await supabase.from('course_bookings').insert({
       user_id: user.id, course_id: slot.course.id,
@@ -783,6 +791,41 @@ function BookingsPanel() {
           </div>
         )}
       </div>
+
+      {/* Modal conferma prenotazione */}
+      {confirmSlot && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-7 space-y-5">
+            <div>
+              <p className="text-[10px] font-label uppercase tracking-widest text-primary mb-1">Conferma prenotazione</p>
+              <h3 className="font-serif text-lg text-on-surface">{confirmSlot.course.nome}</h3>
+              <p className="text-sm text-on-surface-variant mt-1">
+                {new Date(confirmSlot.dateStr + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {` · ${confirmSlot.course.ora_inizio.slice(0,5)}–${confirmSlot.course.ora_fine.slice(0,5)}`}
+              </p>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Puoi annullare la prenotazione fino a <strong>24 ore prima</strong> della lezione. Dopo tale termine la prenotazione non potrà essere annullata e la lezione verrà scalata dall'abbonamento.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmSlot(null)}
+                className="flex-1 py-3 rounded-2xl border border-outline-variant/40 text-sm text-on-surface-variant hover:border-outline-variant transition-all"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={confermaPrenota}
+                className="flex-1 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:bg-opacity-90 transition-all"
+              >
+                Conferma
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Le mie prenotazioni */}
       {myBookings.length > 0 && (
