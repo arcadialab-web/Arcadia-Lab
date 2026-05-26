@@ -557,7 +557,7 @@ function MyPlanPanel() {
       {/* Lista piani (quando non in scadenza) */}
       {!mostraRinnovo && piani.length > 0 && (
         <div>
-          <p className="text-[10px] font-label uppercase tracking-[0.25em] text-on-surface-variant mb-3">Piani disponibili</p>
+          <p className="text-[10px] font-label uppercase tracking-[0.25em] text-on-surface-variant mb-3">Acquista un nuovo abbonamento</p>
           <div className="grid gap-3">
             {piani.map(p => (
               <div key={p.id} className="flex items-center justify-between p-4 bg-surface-container-low border border-outline-variant/30 rounded-2xl hover:border-primary/30 transition-all group">
@@ -565,9 +565,11 @@ function MyPlanPanel() {
                   <p className="font-bold text-sm text-on-surface group-hover:text-primary transition-colors">{p.nome}</p>
                   <p className="text-xs text-on-surface-variant mt-0.5">{p.lezioni_totali} lezioni · {p.durata_giorni} giorni</p>
                 </div>
-                <div className="text-right">
+                <div className="flex items-center gap-3">
                   <p className="font-serif font-bold text-on-surface">€ {p.prezzo.toFixed(0)}</p>
-                  <a href="/#pricing" className="text-[10px] font-bold uppercase tracking-widest text-primary mt-1 hover:underline block">Acquista →</a>
+                  <button onClick={() => setRenewPlan(p)} className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all">
+                    Acquista
+                  </button>
                 </div>
               </div>
             ))}

@@ -84,23 +84,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2. Controlla se l'email esiste già in auth.users (fonte autoritativa)
-    const authRes = await fetch(
-      `${Deno.env.get('SUPABASE_URL')}/auth/v1/admin/users?filter=${encodeURIComponent(emailNorm)}&page=1&per_page=1`,
-      {
-        headers: {
-          'apikey': Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}`,
-        },
-      }
-    );
-    if (authRes.ok) {
-      const authJson = await authRes.json();
-      const found = (authJson?.users ?? []).some((u: { email: string }) => u.email === emailNorm);
-      if (found) {
-        return new Response(JSON.stringify({ error: 'email_exists' }), {
-          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+    // 2. Controlla se l'email esiste già in auth.users (solo per nuovi utenti, non per rinnovi)
+    if (!renewal_from) {
+      const authRes = await fetch(
+        `${Deno.env.get('SUPABASE_URL')}/auth/v1/admin/users?filter=${encodeURIComponent(emailNorm)}&page=1&per_page=1`,
+        {
+          headers: {
+            'apikey': Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}`,
+          },
+        }
+      );
+      if (authRes.ok) {
+        const authJson = await authRes.json();
+        const found = (authJson?.users ?? []).some((u: { email: string }) => u.email === emailNorm);
+        if (found) {
+          return new Response(JSON.stringify({ error: 'email_exists' }), {
+            status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       }
     }
 
