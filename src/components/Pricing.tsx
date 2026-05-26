@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
 interface Plan {
   id: string;
@@ -20,25 +21,29 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const [form, setForm] = useState({ nome: '', cognome: '', email: '', telefono: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState('');
+  const [emailEsistente, setEmailEsistente] = useState(false);
   const [tesseraGiorni, setTesseraGiorni] = useState<number | null>(null);
   const [includeTessera, setIncludeTessera] = useState(false);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
-  // Quando l'utente digita la mail, controlla se ha tessera in scadenza
-  const checkTessera = async (email: string) => {
-    if (!email.includes('@')) return;
+  // Quando l'utente esce dal campo email: controlla se esiste già un account
+  const checkEmail = async (email: string) => {
+    const norm = email.toLowerCase().trim();
+    if (!norm.includes('@')) return;
+
+    setEmailEsistente(false);
+    setTesseraGiorni(null);
+
     const { data } = await supabase
       .from('profiles')
       .select('tessera_scadenza')
-      .eq('email', email.toLowerCase().trim())
+      .eq('email', norm)
       .maybeSingle();
-    if (data?.tessera_scadenza) {
-      const oggi = new Date(); oggi.setHours(0,0,0,0);
-      const giorni = Math.ceil((new Date(data.tessera_scadenza).getTime() - oggi.getTime()) / 86400000);
-      setTesseraGiorni(giorni <= 7 ? giorni : null);
-    } else {
-      setTesseraGiorni(null);
+
+    if (data) {
+      setEmailEsistente(true);
+      return;
     }
   };
 
@@ -117,11 +122,24 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
 
           <div>
             <label className={lbl}>Email *</label>
-            <input className={inp} required type="email" inputMode="email" autoComplete="email" placeholder="nome@email.com" value={form.email}
-              onChange={e => set('email', e.target.value)}
-              onBlur={e => checkTessera(e.target.value)}
+            <input
+              className={`${inp} ${emailEsistente ? 'border-red-400 focus:border-red-400 focus:ring-red-200' : ''}`}
+              required type="email" inputMode="email" autoComplete="email"
+              placeholder="nome@email.com" value={form.email}
+              onChange={e => { set('email', e.target.value); setEmailEsistente(false); }}
+              onBlur={e => checkEmail(e.target.value)}
             />
-            <p className="text-xs text-on-surface-variant mt-1.5">Le credenziali del tuo account verranno inviate qui.</p>
+            {emailEsistente ? (
+              <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+                <span className="text-red-500 mt-0.5 flex-shrink-0">⚠️</span>
+                <p className="text-xs text-red-700 leading-relaxed">
+                  Esiste già un account con questa email. Effettua il <a href="/login" className="font-bold underline">login</a> per gestire il tuo abbonamento, oppure contattaci a{' '}
+                  <a href="mailto:arcadialabyoga@gmail.com" className="font-bold underline">arcadialabyoga@gmail.com</a>.
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-on-surface-variant mt-1.5">Le credenziali del tuo account verranno inviate qui.</p>
+            )}
           </div>
 
           <div>
@@ -150,7 +168,7 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
           <motion.button
             whileTap={{ scale: 0.97 }}
             type="submit"
-            disabled={loading || !form.email || !form.nome || !form.telefono}
+            disabled={loading || !form.email || !form.nome || !form.telefono || emailEsistente}
             className="w-full bg-primary text-white py-4 rounded-2xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading
@@ -172,7 +190,13 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
 // ── Riga piano con bottone individuale ───────────────────────
 function PlanRow({ plan }: { plan: Plan }) {
   const [showModal, setShowModal] = useState(false);
+  const { preLancio } = useSiteSettings();
   const durataNome = plan.nome.split('—')[1]?.trim() ?? plan.nome;
+
+  const handleClick = () => {
+    if (preLancio) { window.location.href = '#register'; return; }
+    setShowModal(true);
+  };
 
   return (
     <>
@@ -187,10 +211,10 @@ function PlanRow({ plan }: { plan: Plan }) {
           <span className="text-xl font-bold text-on-surface">€ {plan.prezzo.toFixed(0)}</span>
           <motion.button
             whileTap={{ scale: 0.95 }}
-            onClick={() => setShowModal(true)}
+            onClick={handleClick}
             className="bg-primary text-white text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all shadow-sm"
           >
-            Scegli
+            {preLancio ? 'Iscriviti' : 'Scegli'}
           </motion.button>
         </div>
       </div>
@@ -205,15 +229,21 @@ function PlanRow({ plan }: { plan: Plan }) {
 // ── Pulsante piano (usato per i pacchetti) ────────────────────
 function PlanButton({ plan, label = 'Inizia ora' }: { plan: Plan; label?: string }) {
   const [showModal, setShowModal] = useState(false);
+  const { preLancio } = useSiteSettings();
+
+  const handleClick = () => {
+    if (preLancio) { window.location.href = '#register'; return; }
+    setShowModal(true);
+  };
 
   return (
     <>
       <motion.button
-        onClick={() => setShowModal(true)}
+        onClick={handleClick}
         whileTap={{ scale: 0.98 }}
         className="w-full py-4 text-center border-2 border-primary/20 hover:border-primary hover:bg-primary hover:text-white text-primary font-bold rounded-2xl transition-all duration-300"
       >
-        {label}
+        {preLancio ? 'Iscriviti' : label}
       </motion.button>
 
       <AnimatePresence>
