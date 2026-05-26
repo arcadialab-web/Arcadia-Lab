@@ -47,11 +47,11 @@ export default function UserDashboard({ userName }: { userName: string }) {
       { count: totBookings },
       { data: lessons },
     ] = await Promise.all([
-      // Abbonamento attivo
+      // Abbonamento attivo o in attesa
       supabase.from('subscriptions')
         .select('*, plans(nome)')
         .eq('user_id', user.id)
-        .eq('stato', 'attivo')
+        .in('stato', ['attivo', 'in_attesa'])
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
@@ -153,6 +153,37 @@ export default function UserDashboard({ userName }: { userName: string }) {
           </div>
         )}
       </motion.div>
+
+      {/* Banner abbonamento in attesa di certificato */}
+      {sub?.stato === 'in_attesa' && (
+        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+          className="border border-amber-200 rounded-2xl p-5 space-y-3"
+          style={{ background: 'rgba(251,191,36,0.07)' }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⏳</span>
+            <p className="text-sm font-bold text-amber-800">Abbonamento in attesa di attivazione</p>
+          </div>
+          <p className="text-sm text-amber-700 leading-relaxed">
+            Il tuo pagamento è stato ricevuto. Per attivare l'abbonamento inviaci il <strong>certificato medico di sana e robusta costituzione</strong>:
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <a href="mailto:arcadialabyoga@gmail.com"
+              className="flex items-center gap-2 bg-amber-100 text-amber-800 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-amber-200 transition-all"
+            >
+              📧 arcadialabyoga@gmail.com
+            </a>
+            <a href="tel:+393466770909"
+              className="flex items-center gap-2 bg-amber-100 text-amber-800 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-amber-200 transition-all"
+            >
+              📱 +39 346 677 0909
+            </a>
+          </div>
+          <p className="text-xs text-amber-600">
+            ✅ Non perderai nessun giorno — l'abbonamento partirà dalla data in cui verificheremo il certificato.
+          </p>
+        </motion.div>
+      )}
 
       {/* Banner tessera in scadenza / scaduta */}
       {tesseraScaduta && (

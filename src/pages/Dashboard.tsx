@@ -376,7 +376,7 @@ function MyPlanPanel() {
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      supabase.from('subscriptions').select('*, plans(*)').eq('user_id', user.id).eq('stato', 'attivo').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('subscriptions').select('*, plans(*)').eq('user_id', user.id).in('stato', ['attivo', 'in_attesa']).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('plans').select('*').eq('is_attivo', true).order('ordine'),
       supabase.from('profiles').select('tessera_scadenza').eq('id', user.id).single(),
     ]).then(([{ data: s }, { data: p }, { data: prof }]) => {
@@ -427,7 +427,25 @@ function MyPlanPanel() {
       {/* ── ABBONAMENTO ─────────────────────────────────────────── */}
       <div>
         <p className="text-[10px] font-label uppercase tracking-[0.25em] text-on-surface-variant mb-3">Abbonamento</p>
-        {!sub ? (
+        {sub?.stato === 'in_attesa' ? (
+          <div className="border border-amber-200 rounded-2xl p-6 space-y-3" style={{ background: 'rgba(251,191,36,0.07)' }}>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">⏳</span>
+              <p className="text-sm font-bold text-amber-800">Abbonamento in attesa di attivazione</p>
+            </div>
+            <p className="text-sm text-amber-700 leading-relaxed">
+              Il tuo pagamento è stato ricevuto correttamente. Per attivare l'abbonamento è necessario inviarci il <strong>certificato medico di sana e robusta costituzione</strong>.
+            </p>
+            <div className="bg-white/60 rounded-xl p-4 space-y-1.5">
+              <p className="text-xs font-bold text-amber-800 uppercase tracking-widest">Come procedere</p>
+              <p className="text-sm text-amber-700">📧 Invia il certificato a <a href="mailto:arcadialabyoga@gmail.com" className="font-bold underline">arcadialabyoga@gmail.com</a></p>
+              <p className="text-sm text-amber-700">📱 Oppure contattaci su WhatsApp al <a href="tel:+393466770909" className="font-bold underline">+39 346 677 0909</a></p>
+            </div>
+            <p className="text-xs text-amber-600 bg-amber-100/60 rounded-xl px-4 py-2.5">
+              ✅ <strong>Non perderai nessun giorno</strong> — l'abbonamento <strong>{sub?.plans?.nome}</strong> partirà dalla data in cui verificheremo il tuo certificato.
+            </p>
+          </div>
+        ) : !sub ? (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
             <p className="text-sm font-semibold text-amber-800 mb-1">Nessun abbonamento attivo</p>
             <p className="text-xs text-amber-700">Acquista un abbonamento dalla <a href="/#pricing" className="underline font-bold">pagina principale</a>.</p>
