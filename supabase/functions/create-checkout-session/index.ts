@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     // Se l'email è già registrata blocca il checkout — deve fare login
     if (profile) {
       return new Response(JSON.stringify({ error: 'email_exists' }), {
-        status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
