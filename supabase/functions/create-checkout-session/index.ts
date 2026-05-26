@@ -84,19 +84,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2. Cerca utente tramite profiles.email (evita listUsers())
+    // 2. Controlla se l'email esiste già in auth.users (fonte autoritativa)
+    const authRes = await fetch(
+      `${Deno.env.get('SUPABASE_URL')}/auth/v1/admin/users?filter=${encodeURIComponent(emailNorm)}&page=1&per_page=1`,
+      {
+        headers: {
+          'apikey': Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}`,
+        },
+      }
+    );
+    if (authRes.ok) {
+      const authJson = await authRes.json();
+      const found = (authJson?.users ?? []).some((u: { email: string }) => u.email === emailNorm);
+      if (found) {
+        return new Response(JSON.stringify({ error: 'email_exists' }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // 3. Profilo per dati tessera
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, tessera_scadenza')
       .eq('email', emailNorm)
       .maybeSingle();
-
-    // Se l'email è già registrata blocca il checkout — deve fare login
-    if (profile) {
-      return new Response(JSON.stringify({ error: 'email_exists' }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     const isNewUser = !profile;
 
