@@ -68,8 +68,7 @@ async function verifyAdmin(req: Request): Promise<boolean> {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) return false;
   const jwt = authHeader.replace('Bearer ', '');
-  const caller = createClient(Deno.env.get('SUPABASE_URL')!, jwt);
-  const { data: { user }, error } = await caller.auth.getUser();
+  const { data: { user }, error } = await supabase.auth.getUser(jwt);
   if (error || !user) return false;
   if (ADMIN_EMAILS.includes(user.email ?? '')) return true;
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();

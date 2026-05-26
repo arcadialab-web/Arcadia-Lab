@@ -31,8 +31,8 @@ Deno.serve(async (req) => {
     let user_id: string | null = null;
     const authHeader = req.headers.get('Authorization');
     if (authHeader?.startsWith('Bearer ')) {
-      const caller = createClient(Deno.env.get('SUPABASE_URL')!, authHeader.replace('Bearer ', ''));
-      const { data: { user } } = await caller.auth.getUser();
+      const jwt = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabase.auth.getUser(jwt);
       if (user) user_id = user.id;
     }
 
