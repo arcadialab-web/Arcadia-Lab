@@ -644,6 +644,8 @@ function BookingsPanel() {
   const [loading, setLoading]         = useState(true);
   const [booking, setBooking]         = useState<string | null>(null);
   const [confirmSlot, setConfirmSlot] = useState<{ course: any; dateStr: string } | null>(null);
+  const [alertMsg, setAlertMsg]       = useState<{ title: string; text: string } | null>(null);
+  const [cancelBooking, setCancelBooking] = useState<{ id: string; subId: string } | null>(null);
 
   const load = async () => {
     if (!user) return;
@@ -672,13 +674,12 @@ function BookingsPanel() {
   const prenota = async (slot: { course: any; dateStr: string }) => {
     if (!user || !sub) return;
     if (sub.lezioni_usate >= sub.lezioni_totali) {
-      alert('Hai esaurito le lezioni del tuo abbonamento.'); return;
+      setAlertMsg({ title: 'Lezioni esaurite', text: 'Hai esaurito tutte le lezioni del tuo abbonamento.' });
+      return;
     }
-    // Controlla limite settimanale in base al piano
     const frequenza: number | null = sub.plans?.frequenza_sett ?? null;
     if (frequenza) {
       const slotDate = new Date(slot.dateStr + 'T12:00:00');
-      // Calcola lunedì e domenica della settimana dello slot
       const dow = slotDate.getDay() === 0 ? 7 : slotDate.getDay();
       const lun = new Date(slotDate); lun.setDate(slotDate.getDate() - dow + 1); lun.setHours(0,0,0,0);
       const dom = new Date(lun); dom.setDate(lun.getDate() + 6); dom.setHours(23,59,59,999);
@@ -686,7 +687,10 @@ function BookingsPanel() {
       const domStr = dom.toISOString().split('T')[0];
       const prenoteSettimana = myBookings.filter(b => b.data >= lunStr && b.data <= domStr).length;
       if (prenoteSettimana >= frequenza) {
-        alert(`Il tuo abbonamento prevede ${frequenza} lezione${frequenza > 1 ? 'i' : 'e'} a settimana. Hai già raggiunto il limite per questa settimana.`);
+        setAlertMsg({
+          title: 'Limite settimanale raggiunto',
+          text: `Il tuo abbonamento prevede ${frequenza} lezione${frequenza > 1 ? 'i' : 'e'} a settimana. Hai già raggiunto il limite per questa settimana.`,
+        });
         return;
       }
     }
@@ -699,7 +703,6 @@ function BookingsPanel() {
     setConfirmSlot(null);
     setBooking(slot.course.id + slot.dateStr);
 
-    // Prima controlla se esiste già un record cancellato per questo slot
     const { data: existing } = await supabase
       .from('course_bookings')
       .select('id')
@@ -711,7 +714,6 @@ function BookingsPanel() {
 
     let error;
     if (existing) {
-      // Riattiva il record cancellato
       ({ error } = await supabase
         .from('course_bookings')
         .update({ stato: 'confermata', subscription_id: sub.id })
@@ -726,15 +728,21 @@ function BookingsPanel() {
     if (!error) {
       await supabase.rpc('increment_lezioni_usate', { sub_id: sub.id });
     } else if (error.code === '23505') {
-      alert('Hai già prenotato questa lezione.');
+      setAlertMsg({ title: 'Già prenotata', text: 'Hai già una prenotazione attiva per questa lezione.' });
     }
     setBooking(null);
     load();
   };
 
   const disdici = async (bookingId: string, subId: string) => {
-    if (!confirm('Vuoi disdire questa prenotazione?')) return;
-    await supabase.from('course_bookings').update({ stato: 'cancellata' }).eq('id', bookingId);
+    setCancelBooking({ id: bookingId, subId });
+  };
+
+  const confermaDisdici = async () => {
+    if (!cancelBooking) return;
+    const { id, subId } = cancelBooking;
+    setCancelBooking(null);
+    await supabase.from('course_bookings').update({ stato: 'cancellata' }).eq('id', id);
     await supabase.rpc('decrement_lezioni_usate', { sub_id: subId });
     load();
   };
@@ -906,6 +914,52 @@ function BookingsPanel() {
                 Conferma
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal disdetta */}
+      {cancelBooking && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-7 space-y-5">
+            <div>
+              <p className="text-[10px] font-label uppercase tracking-widest text-red-500 mb-1">Disdici prenotazione</p>
+              <h3 className="font-serif text-lg text-on-surface">Vuoi disdire questa lezione?</h3>
+              <p className="text-sm text-on-surface-variant mt-1">La lezione verrà rimossa dalle tue prenotazioni e il credito sarà restituito all'abbonamento.</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCancelBooking(null)}
+                className="flex-1 py-3 rounded-2xl border border-outline-variant/40 text-sm text-on-surface-variant hover:border-outline-variant transition-all"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={confermaDisdici}
+                className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-all"
+              >
+                Sì, disdici
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal avviso generico */}
+      {alertMsg && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-7 space-y-5">
+            <div>
+              <p className="text-[10px] font-label uppercase tracking-widest text-primary mb-1">Avviso</p>
+              <h3 className="font-serif text-lg text-on-surface">{alertMsg.title}</h3>
+              <p className="text-sm text-on-surface-variant mt-1">{alertMsg.text}</p>
+            </div>
+            <button
+              onClick={() => setAlertMsg(null)}
+              className="w-full py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:bg-opacity-90 transition-all"
+            >
+              Capito
+            </button>
           </div>
         </div>
       )}
