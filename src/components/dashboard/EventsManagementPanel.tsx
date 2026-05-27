@@ -218,11 +218,11 @@ function EventModal({ event, onClose, onSave }: {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={lbl}>Prezzo base (€)</label>
-              <input className={inp} type="number" min="0" step="0.01" value={form.prezzo_base} onChange={e => set('prezzo_base', parseFloat(e.target.value) || 0)} placeholder="0" />
+              <input className={inp} type="number" min="0" step="0.01" value={form.prezzo_base === 0 ? '' : form.prezzo_base} onChange={e => set('prezzo_base', parseFloat(e.target.value) || 0)} placeholder="0" />
             </div>
             <div>
               <label className={lbl}>Extra non abbonati (€)</label>
-              <input className={inp} type="number" min="0" step="0.01" value={form.prezzo_extra_non_abbonato} onChange={e => set('prezzo_extra_non_abbonato', parseFloat(e.target.value) || 0)} placeholder="0" />
+              <input className={inp} type="number" min="0" step="0.01" value={form.prezzo_extra_non_abbonato === 0 ? '' : form.prezzo_extra_non_abbonato} onChange={e => set('prezzo_extra_non_abbonato', parseFloat(e.target.value) || 0)} placeholder="0" />
               <p className="text-[10px] text-on-surface-variant mt-1">Aggiunto al prezzo base per chi non è abbonato</p>
             </div>
           </div>
