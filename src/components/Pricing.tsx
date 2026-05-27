@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useAuth } from '../context/AuthContext';
 
 interface Plan {
   id: string;
@@ -192,14 +193,48 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   );
 }
 
+async function directCheckout(planId: string) {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('nome, cognome, email, telefono, tessera_scadenza')
+    .single();
+  const { data: sub } = await supabase
+    .from('subscriptions')
+    .select('data_scadenza')
+    .in('stato', ['attivo', 'in_attesa'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+    body: {
+      plan_id:       planId,
+      email:         profile?.email ?? '',
+      nome:          profile?.nome ?? '',
+      cognome:       profile?.cognome ?? '',
+      telefono:      profile?.telefono ?? '',
+      renewal_from:  sub?.data_scadenza ?? undefined,
+    },
+  });
+  if (error || !data?.url) throw new Error('Errore checkout');
+  window.location.href = data.url;
+}
+
 // ── Riga piano con bottone individuale ───────────────────────
 function PlanRow({ plan }: { plan: Plan }) {
   const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading]     = useState(false);
   const { preLancio } = useSiteSettings();
+  const { user } = useAuth();
   const durataNome = plan.nome.split('—')[1]?.trim() ?? plan.nome;
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (preLancio) { window.location.href = '#register'; return; }
+    if (user) {
+      setLoading(true);
+      try { await directCheckout(plan.id); } catch { setLoading(false); }
+      return;
+    }
     setShowModal(true);
   };
 
@@ -217,9 +252,10 @@ function PlanRow({ plan }: { plan: Plan }) {
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleClick}
-            className="bg-primary text-white text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all shadow-sm"
+            disabled={loading}
+            className="bg-primary text-white text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all shadow-sm disabled:opacity-60 flex items-center gap-1.5"
           >
-            Scegli
+            {loading ? <><Loader2 size={12} className="animate-spin" /> Attendi...</> : 'Scegli'}
           </motion.button>
         </div>
       </div>
@@ -234,10 +270,17 @@ function PlanRow({ plan }: { plan: Plan }) {
 // ── Pulsante piano (usato per i pacchetti) ────────────────────
 function PlanButton({ plan, label = 'Inizia ora' }: { plan: Plan; label?: string }) {
   const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading]     = useState(false);
   const { preLancio } = useSiteSettings();
+  const { user } = useAuth();
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (preLancio) { window.location.href = '#register'; return; }
+    if (user) {
+      setLoading(true);
+      try { await directCheckout(plan.id); } catch { setLoading(false); }
+      return;
+    }
     setShowModal(true);
   };
 
@@ -245,10 +288,11 @@ function PlanButton({ plan, label = 'Inizia ora' }: { plan: Plan; label?: string
     <>
       <motion.button
         onClick={handleClick}
+        disabled={loading}
         whileTap={{ scale: 0.98 }}
-        className="w-full py-4 text-center border-2 border-primary/20 hover:border-primary hover:bg-primary hover:text-white text-primary font-bold rounded-2xl transition-all duration-300"
+        className="w-full py-4 text-center border-2 border-primary/20 hover:border-primary hover:bg-primary hover:text-white text-primary font-bold rounded-2xl transition-all duration-300 disabled:opacity-60 flex items-center justify-center gap-2"
       >
-        {label}
+        {loading ? <><Loader2 size={14} className="animate-spin" /> Attendi...</> : label}
       </motion.button>
 
       <AnimatePresence>
