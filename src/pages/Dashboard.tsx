@@ -65,15 +65,33 @@ function UnlockModal({ utente, onClose, onDone }: { utente: any; onClose: () => 
 
     // Attiva abbonamenti in_attesa → calcola date da oggi
     const subInAttesa = (utente.subscriptions ?? []).find((s: any) => s.stato === 'in_attesa');
+    let dataScadenzaAttivata: string | null = null;
+    let planNomeAttivato: string | null = null;
     if (subInAttesa) {
       const scad = new Date(oggi);
       scad.setDate(scad.getDate() + subInAttesa.durata_giorni);
+      dataScadenzaAttivata = scad.toISOString().split('T')[0];
       await supabase.from('subscriptions').update({
-        stato:        'attivo',
-        data_inizio:  oggi,
-        data_scadenza: scad.toISOString().split('T')[0],
+        stato:         'attivo',
+        data_inizio:   oggi,
+        data_scadenza: dataScadenzaAttivata,
       }).eq('id', subInAttesa.id);
+
+      // Leggi nome piano per l'email
+      const { data: planData } = await supabase.from('plans').select('nome').eq('id', subInAttesa.plan_id).single();
+      planNomeAttivato = planData?.nome ?? null;
     }
+
+    // Invia email di attivazione all'utente e notifica admin
+    const nomeDisplay = [utente.nome, utente.cognome].filter(Boolean).join(' ') || utente.email;
+    await supabase.functions.invoke('notify-activation', {
+      body: {
+        email:       utente.email,
+        nome:        nomeDisplay,
+        planNome:    planNomeAttivato,
+        dataScadenza: dataScadenzaAttivata,
+      },
+    });
 
     setLoading(false);
     onDone();
