@@ -624,7 +624,8 @@ function generateSlots(courses: any[], exceptions: any[], weeksAhead = 4) {
       const diff = (course.giorno_settimana - d.getDay() + 7) % 7;
       d.setDate(d.getDate() + diff + w * 7);
       if (d < today) continue;
-      const dateStr = d.toISOString().split('T')[0];
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
       const isException = exceptions.some(e => e.course_id === course.id && e.data === dateStr);
       if (isException) continue;
       slots.push({ course, date: d, dateStr });
