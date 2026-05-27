@@ -89,15 +89,7 @@ function buildEmail(opts: {
       <a href="${siteUrl}/auth" style="display:inline-block;background:#b56a56;color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:sans-serif;">Accedi alla tua area personale</a>
     </td></tr></table>
     `}
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f0;border:1px solid #f0d4c4;border-radius:12px;margin-bottom:28px;">
-      <tr><td style="padding:14px 18px;">
-        <p style="margin:0;font-size:13px;color:#5a544c;line-height:1.6;font-family:sans-serif;">
-          <strong style="color:#b56a56;">📧 Non trovi l'email?</strong><br/>
-          Controlla <strong>Spam</strong>, <strong>Promozioni</strong> o <strong>Posta indesiderata</strong>.
-        </p>
-      </td></tr>
-    </table>
-    <p style="margin:0;font-size:13px;color:#5a544c;font-family:sans-serif;">Dubbi? <a href="mailto:arcadialabyoga@gmail.com" style="color:#b56a56;">arcadialabyoga@gmail.com</a></p>
+<p style="margin:0;font-size:13px;color:#5a544c;font-family:sans-serif;">Dubbi? <a href="mailto:arcadialabyoga@gmail.com" style="color:#b56a56;">arcadialabyoga@gmail.com</a></p>
   </td></tr>
   <tr><td style="background:#f5f1e8;padding:20px 48px;text-align:center;">
     <p style="margin:0;font-size:12px;color:#a39c90;font-family:sans-serif;font-style:italic;">Arcadia Lab. Yoga · <a href="${siteUrl}" style="color:#b56a56;text-decoration:none;">${siteUrl.replace(/^https?:\/\//, '')}</a></p>
