@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, ChevronDown, ChevronUp, Check, X } from 'lucide-react';
 
 interface Booking {
   id: string;
@@ -14,6 +14,12 @@ interface CourseGroup {
   corso: string;
   bookings: Booking[];
 }
+
+const statoColor: Record<string, string> = {
+  confermata: 'bg-surface-container-low border-outline-variant/20',
+  presente:   'bg-green-50 border-green-200',
+  assente:    'bg-red-50 border-red-200',
+};
 
 export default function CourseBookingsPanel() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -33,13 +39,18 @@ export default function CourseBookingsPanel() {
       .select('id, data, stato, profiles(nome, cognome, email), courses(nome)')
       .gte('data', dal)
       .lte('data', al)
-      .eq('stato', 'confermata')
+      .in('stato', ['confermata', 'presente', 'assente'])
       .order('data', { ascending: false });
     setBookings((data as any) ?? []);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, [dal, al]);
+
+  const setStato = async (id: string, nuovoStato: string) => {
+    await supabase.from('course_bookings').update({ stato: nuovoStato }).eq('id', id);
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, stato: nuovoStato } : b));
+  };
 
   // Raggruppa per corso
   const grouped: CourseGroup[] = [];
@@ -51,7 +62,8 @@ export default function CourseBookingsPanel() {
   }
   grouped.sort((a, b) => b.bookings.length - a.bookings.length);
 
-  const totale = bookings.length;
+  const totale    = bookings.length;
+  const presenti  = bookings.filter(b => b.stato === 'presente').length;
   const corsiUnici = grouped.length;
   const utentiUnici = new Set(bookings.map(b => b.profiles?.email).filter(Boolean)).size;
 
@@ -61,7 +73,7 @@ export default function CourseBookingsPanel() {
     <div className="space-y-6 max-w-3xl">
       <div>
         <h2 className="font-serif text-xl text-on-surface">Prenotazioni corsi</h2>
-        <p className="text-xs text-on-surface-variant mt-1">Visualizza chi si è prenotato, in quale periodo e a quale corso.</p>
+        <p className="text-xs text-on-surface-variant mt-1">Visualizza le prenotazioni e conferma la presenza degli utenti.</p>
       </div>
 
       {/* Filtro periodo */}
@@ -76,7 +88,6 @@ export default function CourseBookingsPanel() {
             <label className="text-xs text-on-surface-variant">Al</label>
             <input type="date" className={inputClass} value={al} onChange={e => setAl(e.target.value)} />
           </div>
-          {/* Scorciatoie */}
           <div className="flex gap-2 flex-wrap">
             {[
               { label: 'Oggi', days: 0 },
@@ -101,11 +112,12 @@ export default function CourseBookingsPanel() {
       </div>
 
       {/* Statistiche */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         {[
           { label: 'Prenotazioni', value: totale },
-          { label: 'Corsi coinvolti', value: corsiUnici },
-          { label: 'Partecipanti unici', value: utentiUnici },
+          { label: 'Presenti',     value: presenti },
+          { label: 'Corsi',        value: corsiUnici },
+          { label: 'Partecipanti', value: utentiUnici },
         ].map(({ label, value }) => (
           <div key={label} className="bg-surface-container-low border border-outline-variant/30 rounded-2xl p-4 text-center">
             <p className="text-2xl font-bold text-on-surface">{loading ? '—' : value}</p>
@@ -128,6 +140,7 @@ export default function CourseBookingsPanel() {
         <div className="space-y-2">
           {grouped.map(group => {
             const isOpen = expanded === group.corso;
+            const nPresenti = group.bookings.filter(b => b.stato === 'presente').length;
             return (
               <div key={group.corso} className="bg-surface-container-low border border-outline-variant/30 rounded-2xl overflow-hidden">
                 <button
@@ -139,7 +152,10 @@ export default function CourseBookingsPanel() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-on-surface">{group.corso}</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">{group.bookings.length} prenotazion{group.bookings.length === 1 ? 'e' : 'i'}</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      {group.bookings.length} prenotazion{group.bookings.length === 1 ? 'e' : 'i'}
+                      {nPresenti > 0 && <span className="ml-2 text-green-600 font-bold">· {nPresenti} present{nPresenti === 1 ? 'e' : 'i'}</span>}
+                    </p>
                   </div>
                   <span className="text-xs font-bold bg-primary/10 text-primary px-2.5 py-1 rounded-full flex-shrink-0">
                     {group.bookings.length}
@@ -153,7 +169,8 @@ export default function CourseBookingsPanel() {
                       <thead>
                         <tr className="border-b border-outline-variant/20">
                           <th className="px-4 py-2 text-left text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Partecipante</th>
-                          <th className="px-4 py-2 text-left text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Data lezione</th>
+                          <th className="px-4 py-2 text-left text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Data</th>
+                          <th className="px-4 py-2 text-right text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Presenza</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-outline-variant/10">
@@ -161,14 +178,32 @@ export default function CourseBookingsPanel() {
                           const nome = b.profiles
                             ? [b.profiles.nome, b.profiles.cognome].filter(Boolean).join(' ') || b.profiles.email
                             : '—';
-                          const data = new Date(b.data).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+                          const data = new Date(b.data).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
                           return (
-                            <tr key={b.id} className="hover:bg-surface-container/50 transition-all">
+                            <tr key={b.id} className={`transition-all ${statoColor[b.stato] ?? ''}`}>
                               <td className="px-4 py-3">
                                 <p className="text-sm text-on-surface">{nome}</p>
                                 <p className="text-xs text-on-surface-variant">{b.profiles?.email}</p>
                               </td>
-                              <td className="px-4 py-3 text-sm text-on-surface-variant">{data}</td>
+                              <td className="px-4 py-3 text-sm text-on-surface-variant whitespace-nowrap">{data}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex gap-1.5 justify-end">
+                                  <button
+                                    onClick={() => setStato(b.id, b.stato === 'presente' ? 'confermata' : 'presente')}
+                                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all ${b.stato === 'presente' ? 'bg-green-500 text-white' : 'border border-outline-variant/40 text-on-surface-variant hover:border-green-400 hover:text-green-600'}`}
+                                  >
+                                    <Check size={11} />
+                                    {b.stato === 'presente' ? 'Presente' : 'Presente'}
+                                  </button>
+                                  <button
+                                    onClick={() => setStato(b.id, b.stato === 'assente' ? 'confermata' : 'assente')}
+                                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all ${b.stato === 'assente' ? 'bg-red-500 text-white' : 'border border-outline-variant/40 text-on-surface-variant hover:border-red-400 hover:text-red-600'}`}
+                                  >
+                                    <X size={11} />
+                                    {b.stato === 'assente' ? 'Assente' : 'Assente'}
+                                  </button>
+                                </div>
+                              </td>
                             </tr>
                           );
                         })}

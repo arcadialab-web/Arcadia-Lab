@@ -698,10 +698,31 @@ function BookingsPanel() {
     const slot = confirmSlot;
     setConfirmSlot(null);
     setBooking(slot.course.id + slot.dateStr);
-    const { error } = await supabase.from('course_bookings').insert({
-      user_id: user.id, course_id: slot.course.id,
-      data: slot.dateStr, subscription_id: sub.id,
-    });
+
+    // Prima controlla se esiste già un record cancellato per questo slot
+    const { data: existing } = await supabase
+      .from('course_bookings')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('course_id', slot.course.id)
+      .eq('data', slot.dateStr)
+      .eq('stato', 'cancellata')
+      .maybeSingle();
+
+    let error;
+    if (existing) {
+      // Riattiva il record cancellato
+      ({ error } = await supabase
+        .from('course_bookings')
+        .update({ stato: 'confermata', subscription_id: sub.id })
+        .eq('id', existing.id));
+    } else {
+      ({ error } = await supabase.from('course_bookings').insert({
+        user_id: user.id, course_id: slot.course.id,
+        data: slot.dateStr, subscription_id: sub.id,
+      }));
+    }
+
     if (!error) {
       await supabase.rpc('increment_lezioni_usate', { sub_id: sub.id });
     } else if (error.code === '23505') {
