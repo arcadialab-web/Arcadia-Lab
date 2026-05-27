@@ -853,40 +853,44 @@ function BookingsPanel() {
                 settimanapiena = myBookings.filter(b => b.data >= lunStr && b.data <= domStr).length >= frequenza;
               }
               return (
-                <div key={key} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${booked ? 'bg-green-50 border-green-200' : settimanapiena ? 'bg-surface-container-low border-outline-variant/20 opacity-60' : 'bg-surface border-outline-variant/20 hover:border-primary/30'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: slot.course.colore }} />
-                    <div>
-                      <p className="font-bold text-sm text-on-surface">{slot.course.nome}</p>
-                      <p className="text-xs text-on-surface-variant">
-                        {GIORNI_IT[slot.course.giorno_settimana]}{' '}
-                        {slot.date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}
-                        {' · '}{slot.course.ora_inizio.slice(0,5)}–{slot.course.ora_fine.slice(0,5)}
-                      </p>
-                      {settimanapiena && <p className="text-[10px] text-on-surface-variant mt-0.5">Limite settimanale raggiunto</p>}
+                <div key={key} className={`p-4 rounded-2xl border transition-all ${booked ? 'bg-green-50 border-green-200' : settimanapiena ? 'bg-surface-container-low border-outline-variant/20 opacity-60' : 'bg-surface border-outline-variant/20 hover:border-primary/30'}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-3 h-3 rounded-full mt-1 flex-shrink-0" style={{ background: slot.course.colore }} />
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-on-surface leading-tight">{slot.course.nome}</p>
+                        <p className="text-xs text-on-surface-variant mt-0.5">
+                          {GIORNI_IT[slot.course.giorno_settimana]}{' '}
+                          {slot.date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}
+                        </p>
+                        <p className="text-xs text-on-surface-variant">{slot.course.ora_inizio.slice(0,5)}–{slot.course.ora_fine.slice(0,5)}</p>
+                        {settimanapiena && <p className="text-[10px] text-primary/70 mt-0.5 font-bold">Limite settimana raggiunto</p>}
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {booked ? (() => {
+                        const ora = slot.course.ora_inizio?.slice(0, 5) ?? '23:59';
+                        const lezioneStart = new Date(`${slot.dateStr}T${ora}:00`);
+                        const canCancel = (lezioneStart.getTime() - Date.now()) > 24 * 60 * 60 * 1000;
+                        return canCancel ? (
+                          <button onClick={() => disdici(booked.id, sub.id)}
+                            className="text-xs text-green-700 font-bold hover:text-red-500 transition-colors px-3 py-2 rounded-2xl bg-green-100 hover:bg-red-50 whitespace-nowrap">
+                            ✓ Disdici
+                          </button>
+                        ) : (
+                          <button onClick={() => setAlertMsg({ title: 'Disdetta non possibile', text: 'Non è più possibile disdire questa lezione. La disdetta deve essere effettuata almeno 24 ore prima dell\'inizio.' })}
+                            className="text-xs text-green-700 font-bold px-3 py-2 rounded-2xl bg-green-100 opacity-70 whitespace-nowrap">
+                            ✓ Prenotata
+                          </button>
+                        );
+                      })() : (
+                        <button onClick={() => prenota(slot)} disabled={isLoading || lezioniRimaste <= 0 || settimanapiena}
+                          className="text-xs font-bold px-3 py-2 rounded-2xl bg-primary text-white hover:bg-opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
+                          {isLoading ? '...' : lezioniRimaste <= 0 ? 'Esaurite' : settimanapiena ? 'Limite' : 'Prenota'}
+                        </button>
+                      )}
                     </div>
                   </div>
-                  {booked ? (() => {
-                    const ora = slot.course.ora_inizio?.slice(0, 5) ?? '23:59';
-                    const lezioneStart = new Date(`${slot.dateStr}T${ora}:00`);
-                    const canCancel = (lezioneStart.getTime() - Date.now()) > 24 * 60 * 60 * 1000;
-                    return canCancel ? (
-                      <button onClick={() => disdici(booked.id, sub.id)}
-                        className="text-xs text-green-700 font-bold hover:text-red-500 transition-colors px-3 py-1.5 rounded-full bg-green-100 hover:bg-red-50">
-                        ✓ Prenotata — Disdici
-                      </button>
-                    ) : (
-                      <button onClick={() => setAlertMsg({ title: 'Disdetta non possibile', text: 'Non è più possibile disdire questa lezione. La disdetta deve essere effettuata almeno 24 ore prima dell\'inizio.' })}
-                        className="text-xs text-green-700 font-bold px-3 py-1.5 rounded-full bg-green-100 opacity-70">
-                        ✓ Prenotata
-                      </button>
-                    );
-                  })() : (
-                    <button onClick={() => prenota(slot)} disabled={isLoading || lezioniRimaste <= 0 || settimanapiena}
-                      className="text-xs font-bold px-3 py-1.5 rounded-full bg-primary text-white hover:bg-opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                      {isLoading ? '...' : lezioniRimaste <= 0 ? 'Esaurite' : settimanapiena ? 'Limite' : 'Prenota'}
-                    </button>
-                  )}
                 </div>
               );
             })}
@@ -977,23 +981,23 @@ function BookingsPanel() {
 
       {/* Le mie prenotazioni */}
       {myBookings.length > 0 && (
-        <div className="bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-6">
-          <h3 className="font-serif text-xl text-on-surface mb-5">Le mie prenotazioni attive</h3>
+        <div className="bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-4 sm:p-6">
+          <h3 className="font-serif text-xl text-on-surface mb-4">Le mie prenotazioni attive</h3>
           <div className="space-y-2">
             {myBookings
               .sort((a, b) => a.data.localeCompare(b.data))
               .map(b => {
                 const course = courses.find(c => c.id === b.course_id);
                 return (
-                  <div key={b.id} className="flex items-center justify-between py-2.5 border-b border-outline-variant/10 last:border-0">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full" style={{ background: course?.colore ?? '#ccc' }} />
-                      <div>
-                        <p className="text-sm font-semibold text-on-surface">{course?.nome ?? '—'}</p>
+                  <div key={b.id} className="flex items-center justify-between gap-3 py-3 border-b border-outline-variant/10 last:border-0">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: course?.colore ?? '#ccc' }} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-on-surface truncate">{course?.nome ?? '—'}</p>
                         <p className="text-xs text-on-surface-variant">
                           {new Date(b.data + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'long' })}
-                          {course && ` · ${course.ora_inizio.slice(0,5)}–${course.ora_fine.slice(0,5)}`}
                         </p>
+                        {course && <p className="text-xs text-on-surface-variant">{course.ora_inizio.slice(0,5)}–{course.ora_fine.slice(0,5)}</p>}
                       </div>
                     </div>
                     {(() => {
