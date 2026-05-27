@@ -865,12 +865,20 @@ function BookingsPanel() {
                       {settimanapiena && <p className="text-[10px] text-on-surface-variant mt-0.5">Limite settimanale raggiunto</p>}
                     </div>
                   </div>
-                  {booked ? (
-                    <button onClick={() => disdici(booked.id, sub.id)}
-                      className="text-xs text-green-700 font-bold hover:text-red-500 transition-colors px-3 py-1.5 rounded-full bg-green-100 hover:bg-red-50">
-                      ✓ Prenotata — Disdici
-                    </button>
-                  ) : (
+                  {booked ? (() => {
+                    const lezioneStart = new Date(`${slot.dateStr}T${slot.course.ora_inizio}`);
+                    const canCancel = (lezioneStart.getTime() - Date.now()) > 24 * 60 * 60 * 1000;
+                    return canCancel ? (
+                      <button onClick={() => disdici(booked.id, sub.id)}
+                        className="text-xs text-green-700 font-bold hover:text-red-500 transition-colors px-3 py-1.5 rounded-full bg-green-100 hover:bg-red-50">
+                        ✓ Prenotata — Disdici
+                      </button>
+                    ) : (
+                      <span className="text-xs text-green-700 font-bold px-3 py-1.5 rounded-full bg-green-100 opacity-70">
+                        ✓ Prenotata
+                      </span>
+                    );
+                  })() : (
                     <button onClick={() => prenota(slot)} disabled={isLoading || lezioniRimaste <= 0 || settimanapiena}
                       className="text-xs font-bold px-3 py-1.5 rounded-full bg-primary text-white hover:bg-opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                       {isLoading ? '...' : lezioniRimaste <= 0 ? 'Esaurite' : settimanapiena ? 'Limite' : 'Prenota'}
@@ -985,10 +993,20 @@ function BookingsPanel() {
                         </p>
                       </div>
                     </div>
-                    <button onClick={() => disdici(b.id, sub.id)}
-                      className="text-xs text-on-surface-variant hover:text-red-500 transition-colors font-label uppercase tracking-wider">
-                      Disdici
-                    </button>
+                    {(() => {
+                      const lezioneStart = new Date(`${b.data}T${course?.ora_inizio ?? '23:59:59'}`);
+                      const canCancel = (lezioneStart.getTime() - Date.now()) > 24 * 60 * 60 * 1000;
+                      return canCancel ? (
+                        <button onClick={() => disdici(b.id, sub.id)}
+                          className="text-xs text-on-surface-variant hover:text-red-500 transition-colors font-label uppercase tracking-wider">
+                          Disdici
+                        </button>
+                      ) : (
+                        <span className="text-xs text-on-surface-variant/40 font-label uppercase tracking-wider cursor-not-allowed" title="Non è più possibile disdire — mancano meno di 24h">
+                          Non disdibile
+                        </span>
+                      );
+                    })()}
                   </div>
                 );
               })}
