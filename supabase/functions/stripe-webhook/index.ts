@@ -37,6 +37,56 @@ async function verifyStripeSignature(body: string, sigHeader: string, secret: st
   return v1sigs.some(s => s === computed);
 }
 
+// ── Email admin HTML ──────────────────────────────────────────
+function buildAdminEmail(opts: {
+  nomeDisplay: string; email: string; planNome: string;
+  isNewUser: boolean; aggiungeTessera: boolean; siteUrl: string;
+}): string {
+  const { nomeDisplay, email, planNome, isNewUser, aggiungeTessera, siteUrl } = opts;
+  return `<!DOCTYPE html>
+<html lang="it">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
+<body style="margin:0;padding:0;background:#fdfbf7;font-family:Georgia,serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#fdfbf7;padding:40px 16px;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+  <tr><td style="background:#2b2927;padding:32px 48px;text-align:center;">
+    <p style="margin:0;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.5);font-family:sans-serif;">Arcadia Lab. — Notifica Admin</p>
+    <h1 style="margin:10px 0 0;font-size:24px;color:#fff;font-weight:400;font-style:italic;">Nuovo abbonamento acquistato</h1>
+  </td></tr>
+  <tr><td style="padding:36px 48px;">
+    <p style="margin:0 0 20px;font-size:15px;color:#2b2927;line-height:1.7;font-family:sans-serif;">
+      ${isNewUser ? 'Un <strong>nuovo utente</strong> si è iscritto' : 'Un utente esistente ha <strong>rinnovato</strong> l\'abbonamento'} su Arcadia Lab.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f1e8;border-radius:16px;margin-bottom:24px;">
+      <tr><td style="padding:20px 24px;">
+        <p style="margin:0 0 12px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#5a544c;font-family:sans-serif;">Dettagli iscrizione</p>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:4px 0;font-size:14px;color:#5a544c;font-family:sans-serif;width:140px;">Nome</td><td style="padding:4px 0;font-size:14px;color:#2b2927;font-weight:700;font-family:sans-serif;">${nomeDisplay}</td></tr>
+          <tr><td style="padding:4px 0;font-size:14px;color:#5a544c;font-family:sans-serif;">Email</td><td style="padding:4px 0;font-size:14px;color:#2b2927;font-family:sans-serif;">${email}</td></tr>
+          <tr><td style="padding:4px 0;font-size:14px;color:#5a544c;font-family:sans-serif;">Piano</td><td style="padding:4px 0;font-size:14px;color:#b56a56;font-weight:700;font-family:sans-serif;">${planNome}</td></tr>
+          <tr><td style="padding:4px 0;font-size:14px;color:#5a544c;font-family:sans-serif;">Nuovo utente</td><td style="padding:4px 0;font-size:14px;color:#2b2927;font-family:sans-serif;">${isNewUser ? 'Sì' : 'No'}</td></tr>
+          <tr><td style="padding:4px 0;font-size:14px;color:#5a544c;font-family:sans-serif;">Tessera inclusa</td><td style="padding:4px 0;font-size:14px;color:#2b2927;font-family:sans-serif;">${aggiungeTessera ? 'Sì' : 'No'}</td></tr>
+        </table>
+      </td></tr>
+    </table>
+    ${isNewUser ? `<div style="background:#fff8f0;border:1px solid #f0d4c4;border-radius:12px;padding:14px 18px;margin-bottom:24px;">
+      <p style="margin:0;font-size:13px;color:#b56a56;font-family:sans-serif;font-weight:700;">⏳ Certificato medico richiesto</p>
+      <p style="margin:6px 0 0;font-size:13px;color:#5a544c;font-family:sans-serif;">Ricorda di sbloccare le prenotazioni una volta ricevuto il certificato medico.</p>
+    </div>` : ''}
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr><td align="center">
+      <a href="${siteUrl}/dashboard/users" style="display:inline-block;background:#b56a56;color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:sans-serif;">Gestisci utenti</a>
+    </td></tr></table>
+  </td></tr>
+  <tr><td style="background:#f5f1e8;padding:20px 48px;text-align:center;">
+    <p style="margin:0;font-size:12px;color:#a39c90;font-family:sans-serif;font-style:italic;">Arcadia Lab. Yoga · <a href="${siteUrl}" style="color:#b56a56;text-decoration:none;">${siteUrl.replace(/^https?:\/\//, '')}</a></p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>`;
+}
+
 // ── Email HTML ────────────────────────────────────────────────
 function buildEmail(opts: {
   email: string; planNome: string; tempPassword: string;
@@ -449,13 +499,8 @@ Deno.serve(async (req) => {
     const nomeDisplay = [session.metadata?.nome, session.metadata?.cognome].filter(Boolean).join(' ') || customerEmail;
     await sendEmail(
       'arcadialabyoga@gmail.com',
-      `[Arcadia Lab.] Nuovo abbonamento: ${planNome}`,
-      `<p style="font-family:sans-serif;font-size:15px;">Nuovo abbonamento acquistato:<br/>
-      <strong>Piano:</strong> ${planNome}<br/>
-      <strong>Nome:</strong> ${nomeDisplay}<br/>
-      <strong>Email:</strong> ${customerEmail}<br/>
-      <strong>Nuovo utente:</strong> ${isNewUser ? 'Sì' : 'No'}<br/>
-      <strong>Tessera aggiunta:</strong> ${aggiungeTessera ? 'Sì' : 'No'}</p>`,
+      `[Arcadia Lab.] Nuovo abbonamento: ${nomeDisplay} — ${planNome}`,
+      buildAdminEmail({ nomeDisplay, email: customerEmail, planNome, isNewUser, aggiungeTessera, siteUrl }),
     );
 
     console.log('✅ Tutto completato per', customerEmail);

@@ -19,11 +19,14 @@ interface Props {
   isAdmin: boolean;
 }
 
+const BOOKINGS_SEEN_KEY = 'admin_bookings_last_seen';
+
 export default function DashboardLayout({ navItems, activeSection, onSectionChange, children, isAdmin }: Props) {
   const { user, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen]               = useState(false);
   const [prenotazioniSbloccate, setPrenotazioni]    = useState<boolean | null>(null);
   const [hasActiveSub, setHasActiveSub]             = useState(false);
+  const [newBookings, setNewBookings]               = useState(0);
 
   useEffect(() => {
     if (!user || isAdmin) return;
@@ -35,6 +38,26 @@ export default function DashboardLayout({ navItems, activeSection, onSectionChan
       setHasActiveSub((count ?? 0) > 0);
     });
   }, [user, isAdmin]);
+
+  // Conta nuove prenotazioni dall'ultima visita alla sezione bookings (solo admin)
+  useEffect(() => {
+    if (!isAdmin) return;
+    const lastSeen = localStorage.getItem(BOOKINGS_SEEN_KEY) ?? new Date(0).toISOString();
+    supabase
+      .from('course_bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('stato', 'confermata')
+      .gt('created_at', lastSeen)
+      .then(({ count }) => setNewBookings(count ?? 0));
+  }, [isAdmin]);
+
+  // Azzera badge quando l'admin apre la sezione prenotazioni
+  useEffect(() => {
+    if (isAdmin && activeSection === 'bookings') {
+      localStorage.setItem(BOOKINGS_SEEN_KEY, new Date().toISOString());
+      setNewBookings(0);
+    }
+  }, [isAdmin, activeSection]);
 
   const mostraBannerCertificato = !isAdmin && hasActiveSub && prenotazioniSbloccate === false;
 
@@ -78,6 +101,11 @@ export default function DashboardLayout({ navItems, activeSection, onSectionChan
                 {item.icon}
               </span>
               <span className="text-sm font-semibold tracking-wide">{item.label}</span>
+              {isAdmin && item.id === 'bookings' && newBookings > 0 && !active && (
+                <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
+                  {newBookings > 99 ? '99+' : newBookings}
+                </span>
+              )}
               {active && (
                 <motion.div
                   layoutId="activeIndicator"
