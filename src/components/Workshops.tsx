@@ -4,12 +4,32 @@ import { Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
+const DEFAULTS = {
+  label:       'Eventi Speciali',
+  titolo:      'Oltre le lezioni — Workshop domenicali',
+  sottotitolo: 'Approfondimenti mensili dedicati a temi specifici. Un tempo dilatato per la tua crescita.',
+  bottone:     'Scopri gli eventi',
+};
+
 export default function Workshops() {
   const [heroImage, setHeroImage] = useState<string | null>(null);
+  const [texts, setTexts] = useState(DEFAULTS);
 
   useEffect(() => {
-    supabase.from('site_settings').select('value').eq('key', 'events_hero_image').single()
-      .then(({ data }) => { if (data?.value) setHeroImage(data.value); });
+    supabase.from('site_settings').select('key, value').in('key', [
+      'events_hero_image', 'events_label', 'events_titolo', 'events_sottotitolo', 'events_bottone',
+    ]).then(({ data }) => {
+      if (!data) return;
+      const s: Record<string, string> = {};
+      data.forEach(r => { s[r.key] = r.value; });
+      if (s['events_hero_image']) setHeroImage(s['events_hero_image']);
+      setTexts({
+        label:       s['events_label']       ?? DEFAULTS.label,
+        titolo:      s['events_titolo']      ?? DEFAULTS.titolo,
+        sottotitolo: s['events_sottotitolo'] ?? DEFAULTS.sottotitolo,
+        bottone:     s['events_bottone']     ?? DEFAULTS.bottone,
+      });
+    });
   }, []);
 
   return (
@@ -56,7 +76,7 @@ export default function Workshops() {
               transition={{ delay: 0.4 }}
               className="font-label tracking-[0.3em] uppercase text-xs block mb-8"
             >
-              Eventi Speciali
+              {texts.label}
             </motion.span>
 
             <motion.h2
@@ -65,8 +85,7 @@ export default function Workshops() {
               transition={{ delay: 0.6 }}
               className="text-4xl md:text-6xl font-serif mb-10 leading-tight"
             >
-              Oltre le lezioni — <br />
-              <span className="italic opacity-80">Workshop domenicali</span>
+              {texts.titolo}
             </motion.h2>
 
             <motion.p
@@ -75,7 +94,7 @@ export default function Workshops() {
               transition={{ delay: 0.8 }}
               className="text-xl opacity-90 leading-relaxed mb-12 font-light"
             >
-              Approfondimenti mensili dedicati a temi specifici. Un tempo dilatato per la tua crescita.
+              {texts.sottotitolo}
             </motion.p>
 
             <motion.div
@@ -89,7 +108,7 @@ export default function Workshops() {
                   whileTap={{ scale: 0.98 }}
                   className="bg-white text-primary px-10 md:px-14 py-5 rounded-full font-bold tracking-[0.2em] uppercase text-[10px] md:text-xs shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] transition-all flex items-center gap-3 group border-none"
                 >
-                  <span>Scopri gli eventi</span>
+                  <span>{texts.bottone}</span>
                   <Calendar size={18} className="group-hover:translate-x-1 transition-transform" />
                 </motion.button>
               </Link>

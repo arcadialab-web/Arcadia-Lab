@@ -567,6 +567,13 @@ export default function EventsManagementPanel() {
   const [filter, setFilter]     = useState<'tutti' | 'prossimi' | 'passati'>('prossimi');
   const [heroImage, setHeroImage] = useState('');
   const [savingHero, setSavingHero] = useState(false);
+  const [sectionTexts, setSectionTexts] = useState({
+    label:    'Eventi Speciali',
+    titolo:   'Oltre le lezioni — Workshop domenicali',
+    sottotitolo: 'Approfondimenti mensili dedicati a temi specifici. Un tempo dilatato per la tua crescita.',
+    bottone:  'Scopri gli eventi',
+  });
+  const [savingTexts, setSavingTexts] = useState(false);
 
   const notify = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 3000);
@@ -574,12 +581,22 @@ export default function EventsManagementPanel() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: ev }, { data: setting }] = await Promise.all([
+    const [{ data: ev }, { data: settings }] = await Promise.all([
       supabase.from('special_events').select('*').order('data_evento', { ascending: false }),
-      supabase.from('site_settings').select('value').eq('key', 'events_hero_image').single(),
+      supabase.from('site_settings').select('key, value').in('key', [
+        'events_hero_image', 'events_label', 'events_titolo', 'events_sottotitolo', 'events_bottone',
+      ]),
     ]);
     setEvents(ev || []);
-    setHeroImage(setting?.value ?? '');
+    const s: Record<string, string> = {};
+    (settings ?? []).forEach(r => { s[r.key] = r.value; });
+    setHeroImage(s['events_hero_image'] ?? '');
+    setSectionTexts(t => ({
+      label:       s['events_label']       ?? t.label,
+      titolo:      s['events_titolo']      ?? t.titolo,
+      sottotitolo: s['events_sottotitolo'] ?? t.sottotitolo,
+      bottone:     s['events_bottone']     ?? t.bottone,
+    }));
     setLoading(false);
   };
 
@@ -589,11 +606,22 @@ export default function EventsManagementPanel() {
       .from('site_settings')
       .upsert({ key: 'events_hero_image', value: url || null }, { onConflict: 'key' });
     setSavingHero(false);
-    if (error) {
-      notify('error', 'Errore salvataggio immagine: ' + error.message);
-    } else {
-      notify('success', 'Immagine homepage salvata.');
-    }
+    if (error) notify('error', 'Errore salvataggio immagine: ' + error.message);
+    else notify('success', 'Immagine homepage salvata.');
+  };
+
+  const saveSectionTexts = async () => {
+    setSavingTexts(true);
+    const rows = [
+      { key: 'events_label',       value: sectionTexts.label },
+      { key: 'events_titolo',      value: sectionTexts.titolo },
+      { key: 'events_sottotitolo', value: sectionTexts.sottotitolo },
+      { key: 'events_bottone',     value: sectionTexts.bottone },
+    ];
+    const { error } = await supabase.from('site_settings').upsert(rows, { onConflict: 'key' });
+    setSavingTexts(false);
+    if (error) notify('error', 'Errore salvataggio testi: ' + error.message);
+    else notify('success', 'Testi sezione salvati.');
   };
 
   useEffect(() => { load(); }, []);
@@ -632,6 +660,39 @@ export default function EventsManagementPanel() {
 
   return (
     <div className="space-y-5">
+
+      {/* Testi sezione homepage */}
+      <div className="bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-5 space-y-4">
+        <div>
+          <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-0.5">Testi homepage — sezione "Eventi Speciali"</p>
+          <p className="text-xs text-on-surface-variant">Modifica il testo che appare nella sezione della home page dedicata agli eventi.</p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label className={lbl}>Label (sopra il titolo)</label>
+            <input className={inp} value={sectionTexts.label} onChange={e => setSectionTexts(t => ({ ...t, label: e.target.value }))} placeholder="Es. Eventi Speciali" />
+          </div>
+          <div>
+            <label className={lbl}>Testo pulsante</label>
+            <input className={inp} value={sectionTexts.bottone} onChange={e => setSectionTexts(t => ({ ...t, bottone: e.target.value }))} placeholder="Es. Scopri gli eventi" />
+          </div>
+        </div>
+        <div>
+          <label className={lbl}>Titolo principale</label>
+          <input className={inp} value={sectionTexts.titolo} onChange={e => setSectionTexts(t => ({ ...t, titolo: e.target.value }))} placeholder="Es. Oltre le lezioni — Workshop domenicali" />
+        </div>
+        <div>
+          <label className={lbl}>Sottotitolo</label>
+          <textarea className={`${inp} resize-none`} rows={2} value={sectionTexts.sottotitolo} onChange={e => setSectionTexts(t => ({ ...t, sottotitolo: e.target.value }))} placeholder="Descrizione breve della sezione..." />
+        </div>
+        <button
+          onClick={saveSectionTexts}
+          disabled={savingTexts}
+          className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-md hover:bg-opacity-90 transition-all disabled:opacity-60"
+        >
+          {savingTexts ? 'Salvataggio...' : 'Salva testi'}
+        </button>
+      </div>
 
       {/* Immagine homepage sezione eventi */}
       <div className="bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-5">
