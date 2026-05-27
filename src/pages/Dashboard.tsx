@@ -866,7 +866,8 @@ function BookingsPanel() {
                     </div>
                   </div>
                   {booked ? (() => {
-                    const lezioneStart = new Date(`${slot.dateStr}T${slot.course.ora_inizio}`);
+                    const ora = slot.course.ora_inizio?.slice(0, 5) ?? '23:59';
+                    const lezioneStart = new Date(`${slot.dateStr}T${ora}:00`);
                     const canCancel = (lezioneStart.getTime() - Date.now()) > 24 * 60 * 60 * 1000;
                     return canCancel ? (
                       <button onClick={() => disdici(booked.id, sub.id)}
@@ -874,9 +875,10 @@ function BookingsPanel() {
                         ✓ Prenotata — Disdici
                       </button>
                     ) : (
-                      <span className="text-xs text-green-700 font-bold px-3 py-1.5 rounded-full bg-green-100 opacity-70">
+                      <button onClick={() => setAlertMsg({ title: 'Disdetta non possibile', text: 'Non è più possibile disdire questa lezione. La disdetta deve essere effettuata almeno 24 ore prima dell\'inizio.' })}
+                        className="text-xs text-green-700 font-bold px-3 py-1.5 rounded-full bg-green-100 opacity-70">
                         ✓ Prenotata
-                      </span>
+                      </button>
                     );
                   })() : (
                     <button onClick={() => prenota(slot)} disabled={isLoading || lezioniRimaste <= 0 || settimanapiena}
@@ -994,7 +996,8 @@ function BookingsPanel() {
                       </div>
                     </div>
                     {(() => {
-                      const lezioneStart = new Date(`${b.data}T${course?.ora_inizio ?? '23:59:59'}`);
+                      const ora = course?.ora_inizio?.slice(0, 5) ?? '23:59';
+                      const lezioneStart = new Date(`${b.data}T${ora}:00`);
                       const canCancel = (lezioneStart.getTime() - Date.now()) > 24 * 60 * 60 * 1000;
                       return canCancel ? (
                         <button onClick={() => disdici(b.id, sub.id)}
@@ -1002,9 +1005,10 @@ function BookingsPanel() {
                           Disdici
                         </button>
                       ) : (
-                        <span className="text-xs text-on-surface-variant/40 font-label uppercase tracking-wider cursor-not-allowed" title="Non è più possibile disdire — mancano meno di 24h">
+                        <button onClick={() => setAlertMsg({ title: 'Disdetta non possibile', text: 'Non è più possibile disdire questa lezione. La disdetta deve essere effettuata almeno 24 ore prima dell\'inizio.' })}
+                          className="text-xs text-on-surface-variant/40 font-label uppercase tracking-wider">
                           Non disdibile
-                        </span>
+                        </button>
                       );
                     })()}
                   </div>
