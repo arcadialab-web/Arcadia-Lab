@@ -52,7 +52,7 @@ export default function AdminDashboard() {
     ] = await Promise.all([
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }).eq('stato', 'attivo'),
       supabase.from('subscriptions').select('prezzo_pagato').gte('created_at', startMese),
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).neq('role', 'admin'),
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }),
       supabase.from('subscriptions').select('prezzo_pagato, created_at').gte('created_at', startAnno),
       supabase.from('subscriptions').select('plans(nome)').eq('stato', 'attivo'),
