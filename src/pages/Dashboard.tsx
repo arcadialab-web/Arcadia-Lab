@@ -9,6 +9,7 @@ import {
   CheckCircle2, XCircle, Lock, Mail, AlertCircle, Inbox,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 import { supabase } from '../lib/supabase';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
 import AdminDashboard from '../components/dashboard/AdminDashboard';
@@ -732,7 +733,9 @@ function BookingsPanel() {
     </div>
   );
 
-  if (!unlocked) return (
+  const { requireMedicalCert } = useSiteSettings();
+
+  if (!unlocked && requireMedicalCert) return (
     <div className="max-w-lg mx-auto">
       <div className="bg-blue-50 border border-blue-200 rounded-[1.5rem] p-8 text-center">
         <Lock size={32} className="text-blue-500 mx-auto mb-4" strokeWidth={1.5} />
@@ -766,6 +769,18 @@ function BookingsPanel() {
 
   return (
     <div className="space-y-6">
+      {!unlocked && !requireMedicalCert && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex gap-3 items-start">
+          <AlertCircle size={18} className="text-amber-600 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
+          <div>
+            <p className="text-sm font-bold text-amber-800">Certificato medico richiesto</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Porta il tuo <strong>certificato medico di buona salute</strong> alla prima lezione oppure invialo a{' '}
+              <a href="mailto:arcadialabyoga@gmail.com" className="underline font-bold">arcadialabyoga@gmail.com</a>.
+            </p>
+          </div>
+        </div>
+      )}
       {tesseraGiorni !== null && tesseraGiorni <= 7 && (
         <div className={`rounded-2xl p-4 border ${tesseraGiorni <= 3 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
           <p className={`text-sm font-bold mb-1 ${tesseraGiorni <= 3 ? 'text-red-700' : 'text-amber-800'}`}>
