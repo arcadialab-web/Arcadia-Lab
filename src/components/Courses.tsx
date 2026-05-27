@@ -1,6 +1,14 @@
 import { motion } from "framer-motion";
+import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Courses() {
+  const { preLancio } = useSiteSettings();
+  const { user } = useAuth();
+
+  const ctaHref = preLancio ? '#register' : user ? '/dashboard/bookings' : '#pricing';
+  const ctaLabel = (btn: string) => preLancio ? btn : user ? 'Prenota lezione' : 'Abbonati';
+
   return (
     <section className="py-32 bg-surface-container-low overflow-hidden" id="courses">
       <div className="container mx-auto px-6">
@@ -72,13 +80,13 @@ export default function Courses() {
                   {course.desc}
                 </p>
                 
-                <motion.a 
-                  href="#register" 
+                <motion.a
+                  href={ctaHref}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="w-full py-4 border border-primary/30 text-primary font-bold rounded-2xl bg-surface-container hover:bg-primary hover:text-white transition-all duration-400 text-center block relative z-10 shadow-sm text-sm"
                 >
-                  {course.btn}
+                  {ctaLabel(course.btn)}
                 </motion.a>
               </div>
             </motion.div>
