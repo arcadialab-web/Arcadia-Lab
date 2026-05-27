@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Navbar from '../components/Navbar';
 
-type Mode = 'login' | 'register' | 'recovery';
+type Mode = 'login' | 'register' | 'recovery' | 'reset';
 
 function PersonIcon() {
   return (
@@ -29,6 +29,14 @@ export default function Auth() {
   const [message, setMessage]         = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const navigate = useNavigate();
 
+  // Rileva il ritorno dal link di recupero password
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setMode('reset');
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   const reset = () => { setEmail(''); setPassword(''); setConfirm(''); setMessage(null); };
   const switchMode = (m: Mode) => { reset(); setMode(m); };
 
@@ -49,6 +57,13 @@ export default function Auth() {
         if (error) throw error;
         setMessage({ type: 'success', text: 'Registrazione completata! Controlla la tua email per confermare l\'account.' });
         reset();
+      } else if (mode === 'reset') {
+        if (password !== confirmPassword) { setMessage({ type: 'error', text: 'Le password non coincidono.' }); return; }
+        if (password.length < 6) { setMessage({ type: 'error', text: 'Password di almeno 6 caratteri.' }); return; }
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        setMessage({ type: 'success', text: 'Password aggiornata con successo!' });
+        setTimeout(() => navigate('/dashboard'), 1500);
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/auth`,
@@ -69,12 +84,14 @@ export default function Auth() {
     login:    'Accedi',
     register: 'Crea account',
     recovery: 'Recupera password',
+    reset:    'Nuova password',
   };
 
   const subtitles: Record<Mode, string> = {
     login:    'Bentornata/o nel tuo spazio Arcadia Lab.',
     register: 'Unisciti alla nostra comunità di praticanti',
     recovery: 'Ti invieremo un link via email',
+    reset:    'Scegli una nuova password per il tuo account',
   };
 
   return (
@@ -119,7 +136,7 @@ export default function Auth() {
               </AnimatePresence>
 
               {/* Tab login/register */}
-              {mode !== 'recovery' && (
+              {mode !== 'recovery' && mode !== 'reset' && (
                 <div className="flex gap-1 bg-surface-container-low p-1 rounded-2xl mt-5">
                   {(['login', 'register'] as Mode[]).map(m => (
                     <button
@@ -146,7 +163,8 @@ export default function Auth() {
                   onSubmit={handleSubmit}
                   className="space-y-4"
                 >
-                  {/* Email */}
+                  {/* Email (non mostrata in reset) */}
+                  {mode !== 'reset' && (
                   <div>
                     <label className={labelClass}>Email</label>
                     <input
@@ -157,9 +175,10 @@ export default function Auth() {
                       className={inputClass}
                     />
                   </div>
+                  )}
 
                   {/* Password */}
-                  {mode !== 'recovery' && (
+                  {(mode !== 'recovery') && (
                     <div>
                       <label className={labelClass}>Password</label>
                       <div className="relative">
@@ -183,7 +202,7 @@ export default function Auth() {
                   )}
 
                   {/* Conferma password */}
-                  {mode === 'register' && (
+                  {(mode === 'register' || mode === 'reset') && (
                     <div>
                       <label className={labelClass}>Conferma password</label>
                       <input
@@ -239,6 +258,7 @@ export default function Auth() {
                         </span>
                       : mode === 'login' ? 'Accedi al tuo spazio'
                       : mode === 'register' ? 'Crea il mio account'
+                      : mode === 'reset' ? 'Salva nuova password'
                       : 'Invia email di recupero'
                     }
                   </motion.button>
