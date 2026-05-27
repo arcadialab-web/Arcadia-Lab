@@ -91,9 +91,9 @@ function buildAdminEmail(opts: {
 function buildEmail(opts: {
   email: string; planNome: string; tempPassword: string;
   isNewUser: boolean; aggiungeTessera: boolean; tesseraScadenza: string;
-  siteUrl: string;
+  siteUrl: string; requireCert: boolean;
 }): string {
-  const { email, planNome, tempPassword, isNewUser, aggiungeTessera, tesseraScadenza, siteUrl } = opts;
+  const { email, planNome, tempPassword, isNewUser, aggiungeTessera, tesseraScadenza, siteUrl, requireCert } = opts;
   return `<!DOCTYPE html>
 <html lang="it">
 <head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
@@ -139,7 +139,27 @@ function buildEmail(opts: {
       <a href="${siteUrl}/auth" style="display:inline-block;background:#b56a56;color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:sans-serif;">Accedi alla tua area personale</a>
     </td></tr></table>
     `}
-<p style="margin:0;font-size:13px;color:#5a544c;font-family:sans-serif;">Dubbi? <a href="mailto:arcadialabyoga@gmail.com" style="color:#b56a56;">arcadialabyoga@gmail.com</a></p>
+    ${requireCert ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f0;border:1px solid #f0d4c4;border-radius:12px;margin-bottom:24px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#b56a56;font-family:sans-serif;">⏳ Abbonamento in attesa di attivazione</p>
+        <p style="margin:0;font-size:13px;color:#5a544c;line-height:1.6;font-family:sans-serif;">
+          Il tuo abbonamento verrà attivato non appena riceveremo il tuo <strong>certificato medico di buona salute</strong>.<br/>
+          Invialo a <a href="mailto:arcadialabyoga@gmail.com" style="color:#b56a56;">arcadialabyoga@gmail.com</a> oppure su WhatsApp al <strong>+39 346 677 0909</strong>.<br/>
+          Non perderai nessun giorno — l'abbonamento partirà dalla data di verifica.
+        </p>
+      </td></tr>
+    </table>` : `
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f0;border:1px solid #f0d4c4;border-radius:12px;margin-bottom:24px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#b56a56;font-family:sans-serif;">⚕️ Certificato medico richiesto</p>
+        <p style="margin:0;font-size:13px;color:#5a544c;line-height:1.6;font-family:sans-serif;">
+          Per partecipare alle lezioni è obbligatorio un <strong>certificato medico di buona salute</strong>.<br/>
+          Puoi inviarlo a <a href="mailto:arcadialabyoga@gmail.com" style="color:#b56a56;">arcadialabyoga@gmail.com</a> oppure presentarlo alla <strong>prima lezione</strong>.
+        </p>
+      </td></tr>
+    </table>`}
+    <p style="margin:0;font-size:13px;color:#5a544c;font-family:sans-serif;">Dubbi? <a href="mailto:arcadialabyoga@gmail.com" style="color:#b56a56;">arcadialabyoga@gmail.com</a></p>
   </td></tr>
   <tr><td style="background:#f5f1e8;padding:20px 48px;text-align:center;">
     <p style="margin:0;font-size:12px;color:#a39c90;font-family:sans-serif;font-style:italic;">Arcadia Lab. Yoga · <a href="${siteUrl}" style="color:#b56a56;text-decoration:none;">${siteUrl.replace(/^https?:\/\//, '')}</a></p>
@@ -364,6 +384,21 @@ Deno.serve(async (req) => {
 
   console.log('Elaborazione abbonamento per:', customerEmail);
 
+  // Idempotenza: se questo payment_intent è già stato processato, ignoralo
+  const stripePaymentId = session.payment_intent ?? session.id;
+  const { data: existing } = await supabase
+    .from('subscriptions')
+    .select('id')
+    .eq('stripe_payment_id', stripePaymentId)
+    .maybeSingle();
+
+  if (existing) {
+    console.log('Evento già processato, skip:', stripePaymentId);
+    return new Response(JSON.stringify({ received: true }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     let userId: string;
     let isNewUser = false;
@@ -489,7 +524,7 @@ Deno.serve(async (req) => {
     console.log('Abbonamento creato');
 
     // Email
-    const html = buildEmail({ email: customerEmail, planNome, tempPassword, isNewUser, aggiungeTessera, tesseraScadenza: tesseraStr, siteUrl });
+    const html = buildEmail({ email: customerEmail, planNome, tempPassword, isNewUser, aggiungeTessera, tesseraScadenza: tesseraStr, siteUrl, requireCert });
     const subject = isNewUser
       ? `Benvenuta/o in Arcadia Lab. — Il tuo account è pronto 🧘`
       : `Arcadia Lab. — Il tuo abbonamento "${planNome}" è attivo`;
