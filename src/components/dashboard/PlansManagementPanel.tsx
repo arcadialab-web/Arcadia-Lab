@@ -70,8 +70,8 @@ function Modal({ plan, onClose, onSave }: {
             <input className={input} required placeholder="Es. Mensile 2 volte/sett" value={form.nome} onChange={e => set('nome', e.target.value)} />
           </div>
           <div>
-            <label className={label}>Descrizione</label>
-            <input className={input} placeholder="Breve descrizione del piano" value={form.descrizione} onChange={e => set('descrizione', e.target.value)} />
+            <label className={label}>Descrizione *</label>
+            <input className={input} required placeholder="Breve descrizione del piano" value={form.descrizione} onChange={e => set('descrizione', e.target.value)} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
