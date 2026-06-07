@@ -14,6 +14,59 @@ const MESI   = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov
 const GIORNI = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
 const card   = 'bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-6 shadow-sm';
 
+const FILTRI_KEY = 'admin_incassi_filtri';
+
+type TipoIncasso   = 'tutto' | 'abbonamenti' | 'eventi';
+type PeriodoIncasso = 'oggi' | 'ieri' | 'settimana' | 'mese' | 'mese_scorso' | 'personalizzato';
+
+const TIPO_OPZIONI: { id: TipoIncasso; label: string }[] = [
+  { id: 'tutto',        label: 'Tutto' },
+  { id: 'abbonamenti',  label: 'Abbonamenti' },
+  { id: 'eventi',       label: 'Eventi speciali' },
+];
+
+const PERIODO_OPZIONI: { id: PeriodoIncasso; label: string }[] = [
+  { id: 'oggi',           label: 'Oggi' },
+  { id: 'ieri',           label: 'Ieri' },
+  { id: 'settimana',      label: 'Questa settimana' },
+  { id: 'mese',           label: 'Questo mese' },
+  { id: 'mese_scorso',    label: 'Mese scorso' },
+  { id: 'personalizzato', label: 'Personalizzato' },
+];
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+function rangeIncassi(periodo: PeriodoIncasso, customStart: string, customEnd: string): [Date, Date] {
+  const oggi = startOfDay(new Date());
+  switch (periodo) {
+    case 'oggi':
+      return [oggi, new Date(oggi.getTime() + 86400000)];
+    case 'ieri': {
+      const ieri = new Date(oggi.getTime() - 86400000);
+      return [ieri, oggi];
+    }
+    case 'settimana': {
+      const giornoSett = (oggi.getDay() + 6) % 7; // lunedì = 0
+      const inizio = new Date(oggi.getTime() - giornoSett * 86400000);
+      return [inizio, new Date(oggi.getTime() + 86400000)];
+    }
+    case 'mese': {
+      const inizio = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+      return [inizio, new Date(oggi.getTime() + 86400000)];
+    }
+    case 'mese_scorso': {
+      const inizio = new Date(oggi.getFullYear(), oggi.getMonth() - 1, 1);
+      const fine   = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+      return [inizio, fine];
+    }
+    case 'personalizzato': {
+      const inizio = customStart ? startOfDay(new Date(customStart)) : oggi;
+      const fineBase = customEnd ? startOfDay(new Date(customEnd)) : inizio;
+      return [inizio, new Date(fineBase.getTime() + 86400000)];
+    }
+  }
+}
+
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
@@ -35,6 +88,36 @@ export default function AdminDashboard() {
   const [planData, setPlanData]           = useState<{ name: string; value: number; color: string }[]>([]);
   const [attivita, setAttivita]           = useState<any[]>([]);
 
+  const filtriSalvati = (() => {
+    try { return JSON.parse(localStorage.getItem(FILTRI_KEY) || '{}'); } catch { return {}; }
+  })();
+  const [filtroTipo, setFiltroTipo]       = useState<TipoIncasso>(filtriSalvati.tipo ?? 'tutto');
+  const [filtroPeriodo, setFiltroPeriodo] = useState<PeriodoIncasso>(filtriSalvati.periodo ?? 'mese');
+  const [customStart, setCustomStart]     = useState<string>(filtriSalvati.customStart ?? '');
+  const [customEnd, setCustomEnd]         = useState<string>(filtriSalvati.customEnd ?? '');
+  const [loadingIncassi, setLoadingIncassi] = useState(true);
+  const [incassi, setIncassi] = useState({ totale: 0, abbonamenti: 0, eventi: 0 });
+
+  useEffect(() => {
+    localStorage.setItem(FILTRI_KEY, JSON.stringify({ tipo: filtroTipo, periodo: filtroPeriodo, customStart, customEnd }));
+  }, [filtroTipo, filtroPeriodo, customStart, customEnd]);
+
+  const loadIncassi = async () => {
+    setLoadingIncassi(true);
+    const [start, end] = rangeIncassi(filtroPeriodo, customStart, customEnd);
+    const [{ data: subsData }, { data: ticketsData }] = await Promise.all([
+      supabase.from('subscriptions').select('prezzo_pagato').gte('created_at', start.toISOString()).lt('created_at', end.toISOString()),
+      supabase.from('event_tickets').select('prezzo_pagato').gte('created_at', start.toISOString()).lt('created_at', end.toISOString()),
+    ]);
+    const abbonamenti = subsData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0;
+    const eventi      = ticketsData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0;
+    const totale = filtroTipo === 'abbonamenti' ? abbonamenti : filtroTipo === 'eventi' ? eventi : abbonamenti + eventi;
+    setIncassi({ totale, abbonamenti, eventi });
+    setLoadingIncassi(false);
+  };
+
+  useEffect(() => { loadIncassi(); }, [filtroTipo, filtroPeriodo, customStart, customEnd]);
+
   const load = async () => {
     setLoading(true);
     const oggi = new Date();
@@ -43,7 +126,8 @@ export default function AdminDashboard() {
 
     const [
       { count: abbonatiAttivi },
-      { data: ricaviMeseData },
+      { data: ricaviMeseSubData },
+      { data: ricaviMeseTicketData },
       { count: totaleUtenti },
       { count: totSub },
       { data: subsAnno },
@@ -52,6 +136,7 @@ export default function AdminDashboard() {
     ] = await Promise.all([
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }).eq('stato', 'attivo'),
       supabase.from('subscriptions').select('prezzo_pagato').gte('created_at', startMese),
+      supabase.from('event_tickets').select('prezzo_pagato').gte('created_at', startMese),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).neq('role', 'admin'),
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }),
       supabase.from('subscriptions').select('prezzo_pagato, created_at').gte('created_at', startAnno),
@@ -61,7 +146,8 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false }).limit(6),
     ]);
 
-    const ricaviMese = ricaviMeseData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0;
+    const ricaviMese = (ricaviMeseSubData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0)
+      + (ricaviMeseTicketData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0);
     const tassoRinnovo = totSub ? Math.round(((abbonatiAttivi || 0) / totSub) * 100) : 0;
 
     // Revenue per mese
@@ -134,6 +220,70 @@ export default function AdminDashboard() {
           </motion.div>
         ))}
       </div>
+
+      {/* Analisi incassi */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.27 }} className={card}>
+        <div className="flex items-start justify-between mb-5 flex-wrap gap-4">
+          <div>
+            <h3 className="font-serif text-xl text-on-surface">Analisi incassi</h3>
+            <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mt-0.5">Filtra per tipo e periodo</p>
+          </div>
+          <div className="text-right">
+            {loadingIncassi ? (
+              <RefreshCw size={18} className="animate-spin text-primary ml-auto" />
+            ) : (
+              <p className="text-2xl font-serif font-bold text-primary">€ {incassi.totale.toLocaleString('it-IT')}</p>
+            )}
+            <p className="text-xs text-on-surface-variant">Incassi nel periodo</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 mb-5">
+          <div className="flex flex-wrap gap-2">
+            {TIPO_OPZIONI.map(o => (
+              <button key={o.id} onClick={() => setFiltroTipo(o.id)}
+                className={`text-xs font-bold px-4 py-2 rounded-full transition-all ${filtroTipo === o.id ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant hover:bg-primary/10 hover:text-primary'}`}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {PERIODO_OPZIONI.map(o => (
+              <button key={o.id} onClick={() => setFiltroPeriodo(o.id)}
+                className={`text-xs font-bold px-4 py-2 rounded-full transition-all ${filtroPeriodo === o.id ? 'bg-primary/15 text-primary' : 'bg-surface-container text-on-surface-variant hover:bg-primary/10 hover:text-primary'}`}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+          {filtroPeriodo === 'personalizzato' && (
+            <div className="flex flex-wrap items-end gap-3 mt-1">
+              <div>
+                <label className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1.5">Dal</label>
+                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
+                  className="bg-surface border border-outline-variant/50 rounded-2xl px-4 py-2 text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1.5">Al</label>
+                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
+                  className="bg-surface border border-outline-variant/50 rounded-2xl px-4 py-2 text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {(filtroTipo === 'tutto') && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl p-4 bg-surface-container">
+              <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-1">Abbonamenti</p>
+              <p className="text-lg font-serif font-bold text-on-surface">€ {incassi.abbonamenti.toLocaleString('it-IT')}</p>
+            </div>
+            <div className="rounded-2xl p-4 bg-surface-container">
+              <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-1">Eventi speciali</p>
+              <p className="text-lg font-serif font-bold text-on-surface">€ {incassi.eventi.toLocaleString('it-IT')}</p>
+            </div>
+          </div>
+        )}
+      </motion.div>
 
       {/* Ricavi anno */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className={card}>

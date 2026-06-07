@@ -1090,8 +1090,8 @@ function MyEventsPanel() {
 
             {!isPast && (
               <p className="text-[11px] text-on-surface-variant mt-3 flex items-center gap-1.5">
-                <span>⚕️</span>
-                Porta il certificato medico insieme a questo codice all'evento.
+                <span>📌</span>
+                Porta questo codice all'evento.
               </p>
             )}
           </div>

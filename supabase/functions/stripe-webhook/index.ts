@@ -320,17 +320,6 @@ Deno.serve(async (req) => {
       </td></tr>
     </table>
 
-    <!-- Avviso certificato -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f0;border:1px solid #f0d4c4;border-radius:12px;margin-bottom:24px;">
-      <tr><td style="padding:16px 20px;">
-        <p style="margin:0;font-size:13px;color:#5a544c;line-height:1.6;font-family:sans-serif;">
-          <strong style="color:#b56a56;">⚕️ Certificato medico richiesto</strong><br/>
-          Porta con te il <strong>certificato medico di buona salute</strong> insieme a questo codice.
-          È obbligatorio per accedere all'evento.
-        </p>
-      </td></tr>
-    </table>
-
     <p style="margin:0;font-size:13px;color:#5a544c;font-family:sans-serif;">
       Per info: <a href="mailto:arcadialabyoga@gmail.com" style="color:#b56a56;">arcadialabyoga@gmail.com</a>
     </p>

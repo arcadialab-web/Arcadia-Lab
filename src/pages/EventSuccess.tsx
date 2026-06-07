@@ -76,7 +76,7 @@ export default function EventSuccess() {
                         {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
                       </button>
                     </div>
-                    <p className="text-xs text-on-surface-variant mt-2">Presentalo all'ingresso insieme al certificato medico</p>
+                    <p className="text-xs text-on-surface-variant mt-2">Presentalo all'ingresso</p>
                   </div>
 
                   {/* Dettagli evento */}
@@ -92,13 +92,6 @@ export default function EventSuccess() {
                     </div>
                   )}
 
-                  {/* Avviso certificato */}
-                  <div className="flex items-start gap-3 p-4 rounded-2xl" style={{ background: 'rgba(181,106,86,0.06)', border: '1px solid rgba(181,106,86,0.15)' }}>
-                    <span className="text-lg flex-shrink-0">⚕️</span>
-                    <p className="text-xs text-on-surface leading-relaxed">
-                      Ricordati di portare il <strong>certificato medico di buona salute</strong> insieme al codice di riferimento.
-                    </p>
-                  </div>
                 </>
               ) : (
                 <div className="text-center py-4">

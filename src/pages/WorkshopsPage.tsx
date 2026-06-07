@@ -92,11 +92,6 @@ function TicketModal({ evento, onClose, isAbbonato }: {
           <div><label className={lbl}>Email *</label><input className={inp} required type="email" value={form.email} onChange={e => set('email', e.target.value)} /></div>
           <div><label className={lbl}>Telefono *</label><input className={inp} required type="tel" value={form.telefono} onChange={e => set('telefono', e.target.value)} placeholder="+39 333 000 0000" /></div>
 
-          <div className="flex items-start gap-2 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
-            <span className="flex-shrink-0">⚕️</span>
-            <p>Porta il <strong>certificato medico di buona salute</strong> all'evento insieme al codice di riferimento che riceverai via email.</p>
-          </div>
-
           {error && <p className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2">{error}</p>}
 
           <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }} type="submit" disabled={loading}
