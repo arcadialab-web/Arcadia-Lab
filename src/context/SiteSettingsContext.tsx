@@ -7,6 +7,8 @@ export interface AbbonamentoOption {
   group?: string;
 }
 
+export const DEFAULT_TESSERA_PREZZO = 20;
+
 export const DEFAULT_ABBONAMENTO_OPTIONS: AbbonamentoOption[] = [
   { value: 'carnet_10', label: '10 Ingressi (€ 135)' },
   { value: '1x_mensile', label: 'Mensile — 1 volta/sett. (€ 49)', group: '1 volta / settimana' },
@@ -25,16 +27,17 @@ interface SiteSettings {
   preLancio: boolean;
   requireMedicalCert: boolean;
   abbonamentoOptions: AbbonamentoOption[];
+  tesseraPrezzo: number;
 }
 
-const SiteSettingsContext = createContext<SiteSettings>({ preLancio: false, requireMedicalCert: true, abbonamentoOptions: DEFAULT_ABBONAMENTO_OPTIONS });
+const SiteSettingsContext = createContext<SiteSettings>({ preLancio: false, requireMedicalCert: true, abbonamentoOptions: DEFAULT_ABBONAMENTO_OPTIONS, tesseraPrezzo: DEFAULT_TESSERA_PREZZO });
 
 export function SiteSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<SiteSettings>({ preLancio: false, requireMedicalCert: true, abbonamentoOptions: DEFAULT_ABBONAMENTO_OPTIONS });
+  const [settings, setSettings] = useState<SiteSettings>({ preLancio: false, requireMedicalCert: true, abbonamentoOptions: DEFAULT_ABBONAMENTO_OPTIONS, tesseraPrezzo: DEFAULT_TESSERA_PREZZO });
 
   useEffect(() => {
     supabase.from('site_settings').select('key, value')
-      .in('key', ['pre_lancio', 'require_medical_cert', 'abbonamento_options'])
+      .in('key', ['pre_lancio', 'require_medical_cert', 'abbonamento_options', 'tessera_prezzo'])
       .then(({ data }) => {
         if (!data) return;
         const map = Object.fromEntries(data.map(r => [r.key, r.value]));
@@ -47,10 +50,17 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
           } catch { /* ignora JSON non valido, usa i valori di default */ }
         }
 
+        let tesseraPrezzo = DEFAULT_TESSERA_PREZZO;
+        if (map['tessera_prezzo']) {
+          const parsed = Number(map['tessera_prezzo']);
+          if (!Number.isNaN(parsed) && parsed > 0) tesseraPrezzo = parsed;
+        }
+
         setSettings({
           preLancio: map['pre_lancio'] === 'true',
           requireMedicalCert: map['require_medical_cert'] !== 'false',
           abbonamentoOptions,
+          tesseraPrezzo,
         });
       });
   }, []);

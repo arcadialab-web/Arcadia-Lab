@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { User, Lock, Bell, Shield, Trash2, CheckCircle2, Settings2, Plus, X } from 'lucide-react';
-import { DEFAULT_ABBONAMENTO_OPTIONS, type AbbonamentoOption } from '../../context/SiteSettingsContext';
+import { DEFAULT_ABBONAMENTO_OPTIONS, DEFAULT_TESSERA_PREZZO, type AbbonamentoOption } from '../../context/SiteSettingsContext';
 
 const card = 'bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-6 shadow-sm';
 
@@ -39,11 +39,14 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
   const [abbonamentoOptions, setAbbonamentoOptions] = useState<AbbonamentoOption[]>(DEFAULT_ABBONAMENTO_OPTIONS);
   const [abbonamentoSaving, setAbbonamentoSaving] = useState(false);
   const [abbonamentoMsg, setAbbonamentoMsg] = useState<string | null>(null);
+  const [tesseraPrezzo, setTesseraPrezzo] = useState(String(DEFAULT_TESSERA_PREZZO));
+  const [tesseraPrezzoSaving, setTesseraPrezzoSaving] = useState(false);
+  const [tesseraPrezzoMsg, setTesseraPrezzoMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin) return;
     supabase.from('site_settings').select('key, value')
-      .in('key', ['require_medical_cert', 'pre_lancio', 'abbonamento_options'])
+      .in('key', ['require_medical_cert', 'pre_lancio', 'abbonamento_options', 'tessera_prezzo'])
       .then(({ data }) => {
         if (!data) return;
         const map = Object.fromEntries(data.map(r => [r.key, r.value]));
@@ -55,6 +58,7 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
             if (Array.isArray(parsed) && parsed.length > 0) setAbbonamentoOptions(parsed);
           } catch { /* ignora JSON non valido, mantiene i valori di default */ }
         }
+        if (map['tessera_prezzo']) setTesseraPrezzo(map['tessera_prezzo']);
       });
   }, [isAdmin]);
 
@@ -95,6 +99,22 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
     setAbbonamentoSaving(false);
     setAbbonamentoMsg('Opzioni salvate con successo.');
     setTimeout(() => setAbbonamentoMsg(null), 3000);
+  };
+
+  const saveTesseraPrezzo = async () => {
+    const num = Number(tesseraPrezzo.replace(',', '.'));
+    if (Number.isNaN(num) || num <= 0) {
+      setTesseraPrezzoMsg('Inserisci un prezzo valido.');
+      setTimeout(() => setTesseraPrezzoMsg(null), 3000);
+      return;
+    }
+    setTesseraPrezzoSaving(true);
+    setTesseraPrezzoMsg(null);
+    await supabase.from('site_settings').upsert({ key: 'tessera_prezzo', value: String(num) }, { onConflict: 'key' });
+    setTesseraPrezzo(String(num));
+    setTesseraPrezzoSaving(false);
+    setTesseraPrezzoMsg('Prezzo salvato con successo.');
+    setTimeout(() => setTesseraPrezzoMsg(null), 3000);
   };
 
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -315,6 +335,34 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${preLancio ? 'translate-x-5' : ''}`} />
               </button>
+            </div>
+
+            <div className="flex items-start justify-between gap-4 pt-5">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-on-surface">Prezzo tessera associativa annuale</p>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Importo richiesto per la tessera obbligatoria (assicurazione, validità 365 giorni). Aggiornandolo si modifica automaticamente sia la landing page che l'importo addebitato su Stripe.
+                </p>
+                <div className="flex items-center gap-3 mt-3">
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-on-surface-variant">€</span>
+                    <input
+                      type="text" inputMode="decimal" value={tesseraPrezzo}
+                      onChange={e => setTesseraPrezzo(e.target.value)}
+                      className="w-32 bg-surface border border-outline-variant rounded-2xl pl-7 pr-3 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                    />
+                  </div>
+                  <motion.button
+                    type="button" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    disabled={tesseraPrezzoSaving}
+                    onClick={saveTesseraPrezzo}
+                    className="text-xs font-bold text-white bg-primary px-5 py-2.5 rounded-full hover:bg-opacity-90 transition-all disabled:opacity-60"
+                  >
+                    {tesseraPrezzoSaving ? 'Salvataggio…' : 'Salva prezzo'}
+                  </motion.button>
+                  {tesseraPrezzoMsg && <span className="text-xs font-semibold text-on-surface-variant">{tesseraPrezzoMsg}</span>}
+                </div>
+              </div>
             </div>
           </div>
         </Section>

@@ -1,8 +1,10 @@
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { motion } from 'framer-motion';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
 export default function TermsOfService() {
+  const { tesseraPrezzo } = useSiteSettings();
   return (
     <div className="min-h-screen bg-surface">
       <Navbar />
@@ -28,7 +30,7 @@ export default function TermsOfService() {
             <div className="space-y-4">
               <h2 className="text-2xl font-serif text-on-surface">2. Iscrizioni e Abbonamenti</h2>
               <p>
-                La partecipazione alle attività richiede il pagamento di una quota associativa annuale di € 20, comprensiva di assicurazione. Gli abbonamenti (Mensile, 10 ingressi, Drop-in) hanno validità limitata come specificato nella sezione Pricing.
+                La partecipazione alle attività richiede il pagamento di una quota associativa annuale di € {tesseraPrezzo}, comprensiva di assicurazione. Gli abbonamenti (Mensile, 10 ingressi, Drop-in) hanno validità limitata come specificato nella sezione Pricing.
               </p>
             </div>
 

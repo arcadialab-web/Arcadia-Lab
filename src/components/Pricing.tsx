@@ -24,6 +24,7 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const [error, setError]   = useState('');
   const [emailEsistente, setEmailEsistente] = useState(false);
   const [tesseraGiorni, setTesseraGiorni] = useState<number | null>(null);
+  const { tesseraPrezzo } = useSiteSettings();
   const [includeTessera, setIncludeTessera] = useState(false);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
@@ -158,7 +159,7 @@ function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => void }) {
               <input type="checkbox" checked={includeTessera} onChange={e => setIncludeTessera(e.target.checked)} className="mt-0.5 accent-primary w-4 h-4 flex-shrink-0" />
               <div>
                 <p className={`text-sm font-bold ${tesseraGiorni <= 3 ? 'text-red-700' : 'text-amber-800'}`}>
-                  Rinnova anche la tessera associativa <span className="font-normal">(+ € 20)</span>
+                  Rinnova anche la tessera associativa <span className="font-normal">(+ € {tesseraPrezzo})</span>
                 </p>
                 <p className="text-xs text-on-surface-variant mt-0.5">
                   {tesseraGiorni <= 0 ? 'La tua tessera è scaduta.' : `La tua tessera scade tra ${tesseraGiorni} giorni.`} Puoi rinnovarla ora o in un secondo momento.
@@ -317,6 +318,7 @@ function groupByFrequenza(plans: Plan[]) {
 export default function Pricing() {
   const [plans, setPlans]   = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const { tesseraPrezzo } = useSiteSettings();
 
   useEffect(() => {
     supabase
@@ -430,7 +432,7 @@ export default function Pricing() {
           <div className="flex items-start gap-4 p-6 bg-surface-container-low/50 border border-outline-variant/10 rounded-2xl text-sm group">
             <span className="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">card_membership</span>
             <p>
-              <strong className="text-on-surface uppercase tracking-wider text-xs block mb-1">Tessera associativa annuale — € 20</strong>
+              <strong className="text-on-surface uppercase tracking-wider text-xs block mb-1">Tessera associativa annuale — € {tesseraPrezzo}</strong>
               Obbligatoria per l'iscrizione. Include copertura assicurativa. Valida 365 giorni dall'acquisto. È richiesto il certificato medico di buona salute.
             </p>
           </div>

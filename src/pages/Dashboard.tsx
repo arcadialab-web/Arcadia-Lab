@@ -409,6 +409,7 @@ function RenewalModal({ plan, renewalFrom, userEmail, tesseraGiorni, onClose }: 
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState('');
   const [includeTessera, setIncludeTessera] = useState(false);
+  const { tesseraPrezzo } = useSiteSettings();
   const offreTessera = tesseraGiorni !== null && tesseraGiorni <= 7;
 
   const handleRenew = async () => {
@@ -486,7 +487,7 @@ function RenewalModal({ plan, renewalFrom, userEmail, tesseraGiorni, onClose }: 
               <input type="checkbox" checked={includeTessera} onChange={e => setIncludeTessera(e.target.checked)} className="mt-0.5 accent-primary w-4 h-4 flex-shrink-0" />
               <div>
                 <p className={`text-sm font-bold ${tesseraGiorni! <= 3 ? 'text-red-700' : 'text-amber-800'}`}>
-                  Rinnova anche la tessera associativa <span className="font-normal">(+ € 20)</span>
+                  Rinnova anche la tessera associativa <span className="font-normal">(+ € {tesseraPrezzo})</span>
                 </p>
                 <p className="text-xs text-on-surface-variant mt-0.5">
                   {tesseraGiorni! <= 0 ? 'La tua tessera è scaduta.' : `Scade tra ${tesseraGiorni} giorni.`} Puoi rinnovarla ora o in un secondo momento.
@@ -512,6 +513,7 @@ function RenewalModal({ plan, renewalFrom, userEmail, tesseraGiorni, onClose }: 
 
 function MyPlanPanel() {
   const { user } = useAuth();
+  const { tesseraPrezzo } = useSiteSettings();
   const [sub, setSub]                     = useState<any>(null);
   const [piani, setPiani]                 = useState<any[]>([]);
   const [tesseraScadenza, setTessera]     = useState<string | null>(null);
@@ -693,7 +695,7 @@ function MyPlanPanel() {
                 disabled={tesseraLoading}
                 className="text-xs font-bold px-4 py-2 rounded-xl bg-primary text-white hover:bg-opacity-90 transition-all disabled:opacity-60 flex items-center gap-2"
               >
-                {tesseraLoading ? <><Loader2 size={12} className="animate-spin" /> Attendere...</> : 'Rinnova tessera — € 20'}
+                {tesseraLoading ? <><Loader2 size={12} className="animate-spin" /> Attendere...</> : `Rinnova tessera — € ${tesseraPrezzo}`}
               </button>
             </div>
           )}

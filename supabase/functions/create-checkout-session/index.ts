@@ -13,7 +13,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const TESSERA_PREZZO = 2000; // € 20.00 in centesimi
+const TESSERA_PREZZO_DEFAULT = 2000; // € 20.00 in centesimi, usato se non configurato in site_settings
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -22,6 +22,18 @@ Deno.serve(async (req) => {
 
   try {
     const { plan_id, email, nome, cognome, telefono, renewal_from, include_tessera, tessera_only } = await req.json();
+
+    // Prezzo tessera configurabile dall'admin (site_settings.tessera_prezzo, in euro)
+    let TESSERA_PREZZO = TESSERA_PREZZO_DEFAULT;
+    const { data: prezzoSetting } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'tessera_prezzo')
+      .maybeSingle();
+    if (prezzoSetting?.value) {
+      const eur = Number(prezzoSetting.value);
+      if (!Number.isNaN(eur) && eur > 0) TESSERA_PREZZO = Math.round(eur * 100);
+    }
 
     if (!email) {
       return new Response(JSON.stringify({ error: 'email è obbligatoria' }), {
