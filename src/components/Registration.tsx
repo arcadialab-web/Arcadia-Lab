@@ -9,7 +9,7 @@ const fieldClass = "bg-transparent border-b border-outline-variant focus:border-
 const labelClass = "text-xs font-label uppercase tracking-widest text-on-surface-variant font-bold transition-colors group-focus-within:text-primary";
 
 export default function Registration() {
-  const { preLancio } = useSiteSettings();
+  const { preLancio, abbonamentoOptions } = useSiteSettings();
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -147,23 +147,33 @@ export default function Registration() {
                     <div className="relative">
                       <select id="abbonamento" name="abbonamento" required defaultValue="" className={`${fieldClass} appearance-none cursor-pointer rounded-none`}>
                         <option value="" disabled>Seleziona un'opzione...</option>
-                        <option value="carnet_10">10 Ingressi (€ 135)</option>
-                        <optgroup label="1 volta / settimana">
-                          <option value="1x_mensile">Mensile — 1 volta/sett. (€ 49)</option>
-                          <option value="1x_trimestrale">Trimestrale — 1 volta/sett. (€ 133)</option>
-                          <option value="1x_stagionale">Stagionale — 1 volta/sett. (€ 380)</option>
-                        </optgroup>
-                        <optgroup label="2 volte / settimana">
-                          <option value="2x_mensile">Mensile — 2 volte/sett. (€ 80)</option>
-                          <option value="2x_trimestrale">Trimestrale — 2 volte/sett. (€ 213)</option>
-                          <option value="2x_stagionale">Stagionale — 2 volte/sett. (€ 590)</option>
-                        </optgroup>
-                        <optgroup label="3 volte / settimana">
-                          <option value="3x_mensile">Mensile — 3 volte/sett. (€ 108)</option>
-                          <option value="3x_trimestrale">Trimestrale — 3 volte/sett. (€ 290)</option>
-                          <option value="3x_stagionale">Stagionale — 3 volte/sett. (€ 820)</option>
-                        </optgroup>
-                        <option value="prova">Lezione Singola di prova (€ 20)</option>
+                        {(() => {
+                          const elements: React.ReactNode[] = [];
+                          let i = 0;
+                          while (i < abbonamentoOptions.length) {
+                            const opt = abbonamentoOptions[i];
+                            if (opt.group) {
+                              const groupItems: typeof abbonamentoOptions = [];
+                              let j = i;
+                              while (j < abbonamentoOptions.length && abbonamentoOptions[j].group === opt.group) {
+                                groupItems.push(abbonamentoOptions[j]);
+                                j++;
+                              }
+                              elements.push(
+                                <optgroup key={`group-${i}`} label={opt.group}>
+                                  {groupItems.map(item => (
+                                    <option key={item.value} value={item.value}>{item.label}</option>
+                                  ))}
+                                </optgroup>
+                              );
+                              i = j;
+                            } else {
+                              elements.push(<option key={opt.value} value={opt.value}>{opt.label}</option>);
+                              i++;
+                            }
+                          }
+                          return elements;
+                        })()}
                       </select>
                       <span className="material-symbols-outlined absolute right-2 top-2 pointer-events-none text-outline-variant group-focus-within:text-primary transition-colors">expand_more</span>
                     </div>

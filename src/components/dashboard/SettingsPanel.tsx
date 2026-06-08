@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
-import { User, Lock, Bell, Shield, Trash2, CheckCircle2, Settings2 } from 'lucide-react';
+import { User, Lock, Bell, Shield, Trash2, CheckCircle2, Settings2, Plus, X } from 'lucide-react';
+import { DEFAULT_ABBONAMENTO_OPTIONS, type AbbonamentoOption } from '../../context/SiteSettingsContext';
 
 const card = 'bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-6 shadow-sm';
 
@@ -35,16 +36,25 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
   const [certSaving, setCertSaving]   = useState(false);
   const [preLancio, setPreLancio]     = useState(false);
   const [preLancioSaving, setPreLancioSaving] = useState(false);
+  const [abbonamentoOptions, setAbbonamentoOptions] = useState<AbbonamentoOption[]>(DEFAULT_ABBONAMENTO_OPTIONS);
+  const [abbonamentoSaving, setAbbonamentoSaving] = useState(false);
+  const [abbonamentoMsg, setAbbonamentoMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin) return;
     supabase.from('site_settings').select('key, value')
-      .in('key', ['require_medical_cert', 'pre_lancio'])
+      .in('key', ['require_medical_cert', 'pre_lancio', 'abbonamento_options'])
       .then(({ data }) => {
         if (!data) return;
         const map = Object.fromEntries(data.map(r => [r.key, r.value]));
         if (map['require_medical_cert']) setRequireCert(map['require_medical_cert'] === 'true');
         if (map['pre_lancio'])           setPreLancio(map['pre_lancio'] === 'true');
+        if (map['abbonamento_options']) {
+          try {
+            const parsed = JSON.parse(map['abbonamento_options']);
+            if (Array.isArray(parsed) && parsed.length > 0) setAbbonamentoOptions(parsed);
+          } catch { /* ignora JSON non valido, mantiene i valori di default */ }
+        }
       });
   }, [isAdmin]);
 
@@ -60,6 +70,31 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
     await supabase.from('site_settings').upsert({ key: 'pre_lancio', value: String(val) }, { onConflict: 'key' });
     setPreLancio(val);
     setPreLancioSaving(false);
+  };
+
+  const updateAbbonamentoOption = (index: number, field: keyof AbbonamentoOption, value: string) => {
+    setAbbonamentoOptions(prev => prev.map((opt, i) => i === index ? { ...opt, [field]: value } : opt));
+  };
+
+  const addAbbonamentoOption = () => {
+    setAbbonamentoOptions(prev => [...prev, { value: '', label: '', group: '' }]);
+  };
+
+  const removeAbbonamentoOption = (index: number) => {
+    setAbbonamentoOptions(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const saveAbbonamentoOptions = async () => {
+    setAbbonamentoSaving(true);
+    setAbbonamentoMsg(null);
+    const cleaned = abbonamentoOptions
+      .map(opt => ({ value: opt.value.trim(), label: opt.label.trim(), group: opt.group?.trim() || undefined }))
+      .filter(opt => opt.value && opt.label);
+    await supabase.from('site_settings').upsert({ key: 'abbonamento_options', value: JSON.stringify(cleaned) }, { onConflict: 'key' });
+    setAbbonamentoOptions(cleaned);
+    setAbbonamentoSaving(false);
+    setAbbonamentoMsg('Opzioni salvate con successo.');
+    setTimeout(() => setAbbonamentoMsg(null), 3000);
   };
 
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -281,6 +316,85 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${preLancio ? 'translate-x-5' : ''}`} />
               </button>
             </div>
+          </div>
+        </Section>
+      )}
+
+      {/* Opzioni abbonamento del form di iscrizione (solo in pre-lancio) */}
+      {isAdmin && preLancio && (
+        <Section
+          title="Opzioni abbonamento (form iscrizione)"
+          description="Personalizza le opzioni del campo «Abbonamento richiesto» nel modulo di iscrizione mostrato in modalità pre-lancio"
+          icon={<Settings2 size={17} className="text-primary" strokeWidth={1.5} />}
+        >
+          <div className="space-y-3">
+            {abbonamentoOptions.map((opt, i) => (
+              <div key={i} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-2 p-3 bg-surface rounded-2xl border border-outline-variant/20">
+                <div>
+                  <label className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1">Etichetta</label>
+                  <input
+                    type="text" value={opt.label}
+                    onChange={e => updateAbbonamentoOption(i, 'label', e.target.value)}
+                    placeholder="Es. Mensile — 1 volta/sett. (€ 49)"
+                    className="w-full bg-transparent border-b border-outline-variant focus:border-primary outline-none text-sm py-1.5 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1">Valore</label>
+                  <input
+                    type="text" value={opt.value}
+                    onChange={e => updateAbbonamentoOption(i, 'value', e.target.value)}
+                    placeholder="Es. 1x_mensile"
+                    className="w-full bg-transparent border-b border-outline-variant focus:border-primary outline-none text-sm py-1.5 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1">Gruppo (opzionale)</label>
+                  <input
+                    type="text" value={opt.group ?? ''}
+                    onChange={e => updateAbbonamentoOption(i, 'group', e.target.value)}
+                    placeholder="Es. 1 volta / settimana"
+                    className="w-full bg-transparent border-b border-outline-variant focus:border-primary outline-none text-sm py-1.5 transition-colors"
+                  />
+                </div>
+                <div className="flex items-end justify-end">
+                  <button
+                    type="button"
+                    onClick={() => removeAbbonamentoOption(i)}
+                    className="w-9 h-9 flex items-center justify-center rounded-full text-on-surface-variant hover:text-red-500 hover:bg-red-50 transition-colors"
+                    title="Rimuovi opzione"
+                  >
+                    <X size={16} strokeWidth={1.5} />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <motion.button
+                type="button" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                onClick={addAbbonamentoOption}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-primary border border-primary/30 px-4 py-2.5 rounded-full hover:bg-primary/5 transition-all"
+              >
+                <Plus size={14} strokeWidth={2} /> Aggiungi opzione
+              </motion.button>
+
+              <div className="flex items-center gap-3">
+                {abbonamentoMsg && <span className="text-xs font-semibold text-green-600">{abbonamentoMsg}</span>}
+                <motion.button
+                  type="button" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  disabled={abbonamentoSaving}
+                  onClick={saveAbbonamentoOptions}
+                  className="text-xs font-bold text-white bg-primary px-5 py-2.5 rounded-full hover:bg-opacity-90 transition-all disabled:opacity-60"
+                >
+                  {abbonamentoSaving ? 'Salvataggio…' : 'Salva opzioni'}
+                </motion.button>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-on-surface-variant leading-relaxed">
+              Le voci con lo stesso «Gruppo» consecutive verranno raggruppate insieme nel menu a tendina del modulo. Lascia il gruppo vuoto per le opzioni singole (es. «10 Ingressi», «Lezione di prova»).
+            </p>
           </div>
         </Section>
       )}
