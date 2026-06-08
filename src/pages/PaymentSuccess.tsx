@@ -23,10 +23,20 @@ export default function PaymentSuccess() {
       .then(({ data }) => setSub(data));
   }, [user]);
 
-  const planNome = sub?.plans?.nome?.split('—')[1]?.trim() ?? sub?.plans?.nome;
+  // Dati del piano passati dall'edge function nell'URL — disponibili anche
+  // per i nuovi account, che a questo punto non sono ancora autenticati.
+  const pianoParam  = params.get('piano');
+  const prezzoParam = params.get('prezzo');
+  const giorniParam = params.get('giorni');
+
+  const planNome = sub?.plans?.nome?.split('—')[1]?.trim() ?? sub?.plans?.nome ?? pianoParam ?? null;
+  const prezzo   = sub?.prezzo_pagato ?? (prezzoParam ? Number(prezzoParam) : null);
   const scadenzaFmt = sub?.data_scadenza
     ? new Date(sub.data_scadenza).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
-    : null;
+    : (giorniParam
+      ? new Date(Date.now() + Number(giorniParam) * 86400000).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
+      : null);
+  const stato = sub?.stato ?? null;
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -76,18 +86,20 @@ export default function PaymentSuccess() {
             <div className="px-8 py-7 space-y-4">
 
               {/* Riepilogo abbonamento acquistato */}
-              {sub && (
+              {planNome && (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
                   className="p-5 rounded-2xl bg-surface-container-low border border-outline-variant/20"
                 >
                   <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1">Il tuo acquisto</p>
                   <p className="text-lg font-serif font-bold text-on-surface">{planNome}</p>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-on-surface-variant">
-                    {sub.prezzo_pagato != null && <span>€ {Number(sub.prezzo_pagato).toLocaleString('it-IT')}</span>}
+                    {prezzo != null && <span>€ {Number(prezzo).toLocaleString('it-IT')}</span>}
                     {scadenzaFmt && <span>Valido fino al {scadenzaFmt}</span>}
-                    <span className={`font-bold px-2.5 py-0.5 rounded-full ${sub.stato === 'attivo' ? 'bg-primary/10 text-primary' : 'bg-amber-100 text-amber-700'}`}>
-                      {sub.stato === 'attivo' ? 'Attivo' : sub.stato === 'in_attesa' ? 'In attesa di attivazione' : sub.stato}
-                    </span>
+                    {stato && (
+                      <span className={`font-bold px-2.5 py-0.5 rounded-full ${stato === 'attivo' ? 'bg-primary/10 text-primary' : 'bg-amber-100 text-amber-700'}`}>
+                        {stato === 'attivo' ? 'Attivo' : stato === 'in_attesa' ? 'In attesa di attivazione' : stato}
+                      </span>
+                    )}
                   </div>
                 </motion.div>
               )}

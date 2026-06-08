@@ -199,7 +199,8 @@ Deno.serve(async (req) => {
         telefono:         telefono ?? '',
         renewal_from:     renewal_from ?? '',
       },
-      success_url: `${appUrl}/pagamento-ok?nuovo=${isNewUser ? '1' : '0'}&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${appUrl}/pagamento-ok?nuovo=${isNewUser ? '1' : '0'}&session_id={CHECKOUT_SESSION_ID}`
+        + `&piano=${encodeURIComponent(plan.nome)}&prezzo=${plan.prezzo}&giorni=${plan.durata_giorni}${aggiungeTessera ? '&tessera=1' : ''}`,
       cancel_url:  `${appUrl}/#pricing`,
     });
 
