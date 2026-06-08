@@ -7,6 +7,7 @@ import {
   LayoutDashboard, BarChart2, CreditCard, Users,
   Settings, CalendarCheck, BookOpen, Star, PackagePlus,
   CheckCircle2, XCircle, Lock, Mail, AlertCircle, Inbox,
+  Phone, Award, FileText, Calendar,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
@@ -148,11 +149,12 @@ function UsersPanel() {
   const [utenti, setUtenti]     = useState<any[]>([]);
   const [loading, setLoading]   = useState(true);
   const [unlockTarget, setUnlockTarget] = useState<any>(null);
+  const [detailTarget, setDetailTarget] = useState<any>(null);
 
   const load = () => {
     supabase
       .from('profiles')
-      .select('id, nome, cognome, email, created_at, role, prenotazioni_sbloccate, tessera_scadenza, cert_medico_scadenza, subscriptions(id, data_scadenza, stato, durata_giorni)')
+      .select('id, nome, cognome, email, telefono, created_at, role, prenotazioni_sbloccate, tessera_scadenza, cert_medico_scadenza, subscriptions(id, data_inizio, data_scadenza, stato, durata_giorni, prezzo_pagato, lezioni_totali, lezioni_usate, created_at, plans(nome))')
       .order('created_at', { ascending: false })
       .then(({ data }) => { setUtenti(data || []); setLoading(false); });
   };
@@ -200,7 +202,7 @@ function UsersPanel() {
                 const scadClass = (giorni: number | null) => giorni === null ? 'text-on-surface-variant' : giorni <= 3 ? 'text-red-600 font-bold' : giorni <= 7 ? 'text-amber-600 font-semibold' : 'text-on-surface-variant';
                 const subInAttesa = (u.subscriptions ?? []).some((s: any) => s.stato === 'in_attesa');
                 return (
-                  <tr key={u.id} className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container transition-colors">
+                  <tr key={u.id} onClick={() => setDetailTarget(u)} className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container transition-colors cursor-pointer">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
@@ -246,13 +248,13 @@ function UsersPanel() {
                       {isAdmin ? (
                         <span className="text-xs text-on-surface-variant">—</span>
                       ) : u.prenotazioni_sbloccate ? (
-                        <button onClick={() => blocca(u.id)}
+                        <button onClick={e => { e.stopPropagation(); blocca(u.id); }}
                           className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all bg-green-100 text-green-700 hover:bg-red-50 hover:text-red-600"
                         >
                           <CheckCircle2 size={12} /> Sbloccate
                         </button>
                       ) : (
-                        <button onClick={() => setUnlockTarget(u)}
+                        <button onClick={e => { e.stopPropagation(); setUnlockTarget(u); }}
                           className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all bg-amber-50 text-amber-700 hover:bg-amber-100"
                         >
                           <XCircle size={12} /> Bloccate — Sblocca
@@ -271,7 +273,132 @@ function UsersPanel() {
           <UnlockModal utente={unlockTarget} onClose={() => setUnlockTarget(null)} onDone={() => { setUnlockTarget(null); load(); }} />
         )}
       </AnimatePresence>
+      <AnimatePresence>
+        {detailTarget && (
+          <UserDetailModal utente={detailTarget} onClose={() => setDetailTarget(null)} />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+// ── Modal dettaglio utente ────────────────────────────────────
+function UserDetailModal({ utente, onClose }: { utente: any; onClose: () => void }) {
+  const displayName = utente.nome ? `${utente.nome} ${utente.cognome || ''}`.trim() : (utente.email ?? 'Utente');
+  const isAdmin = utente.role === 'admin';
+  const fmtData = (d: string | null) => d ? new Date(d).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+  const subOrdinati = [...(utente.subscriptions ?? [])].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const subAttuale = subOrdinati.find((s: any) => s.stato === 'attivo' || s.stato === 'in_attesa') ?? subOrdinati[0] ?? null;
+
+  const statoBadge = (stato: string) => {
+    const map: Record<string, { label: string; cls: string }> = {
+      attivo:    { label: 'Attivo',          cls: 'bg-green-100 text-green-700' },
+      in_attesa: { label: 'In attesa',       cls: 'bg-amber-100 text-amber-700' },
+      scaduto:   { label: 'Scaduto',         cls: 'bg-red-100 text-red-600' },
+      annullato: { label: 'Annullato',       cls: 'bg-surface-container text-on-surface-variant' },
+    };
+    const v = map[stato] ?? { label: stato, cls: 'bg-surface-container text-on-surface-variant' };
+    return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${v.cls}`}>{v.label}</span>;
+  };
+
+  const InfoRow = ({ icon, label, value, extra }: { icon: React.ReactNode; label: string; value: React.ReactNode; extra?: React.ReactNode }) => (
+    <div className="flex items-start gap-3 p-3.5 bg-surface rounded-2xl border border-outline-variant/20">
+      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">{icon}</div>
+      <div className="min-w-0">
+        <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">{label}</p>
+        <p className="text-sm font-semibold text-on-surface truncate">{value}</p>
+        {extra}
+      </div>
+    </div>
+  );
+
+  return createPortal(
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96 }} transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+        className="bg-white w-full max-w-lg mx-auto rounded-3xl shadow-2xl overflow-hidden max-h-[88vh] flex flex-col"
+      >
+        <div className="px-6 pt-6 pb-4 border-b border-outline-variant/10 flex items-start justify-between flex-shrink-0">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-base font-bold text-primary flex-shrink-0">
+              {displayName.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-label uppercase tracking-[0.25em] text-primary mb-1">Dettagli utente</p>
+              <h3 className="font-serif text-lg text-on-surface truncate">{displayName}</h3>
+              <span className="inline-block mt-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full" style={{
+                background: isAdmin ? 'rgba(181,106,86,0.12)' : 'rgba(139,168,136,0.15)',
+                color:      isAdmin ? '#b56a56' : '#8ba888',
+              }}>
+                {isAdmin ? 'Admin' : 'Utente'}
+              </span>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant flex-shrink-0">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-3 overflow-y-auto">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <InfoRow icon={<Mail size={16} strokeWidth={1.5} />} label="Email" value={utente.email ?? '—'} />
+            <InfoRow icon={<Phone size={16} strokeWidth={1.5} />} label="Telefono" value={utente.telefono ?? '—'} />
+            <InfoRow icon={<Calendar size={16} strokeWidth={1.5} />} label="Iscritto il" value={fmtData(utente.created_at)} />
+            <InfoRow
+              icon={<Lock size={16} strokeWidth={1.5} />}
+              label="Prenotazioni"
+              value={isAdmin ? '—' : (utente.prenotazioni_sbloccate ? 'Sbloccate' : 'Bloccate')}
+            />
+          </div>
+
+          <div>
+            <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-2 mt-2">Abbonamento</p>
+            {subAttuale ? (
+              <div className="p-4 bg-surface rounded-2xl border border-outline-variant/20 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-bold text-on-surface truncate">{subAttuale.plans?.nome ?? 'Piano'}</p>
+                  {statoBadge(subAttuale.stato)}
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-on-surface-variant">
+                  <span>Inizio: <strong className="text-on-surface">{fmtData(subAttuale.data_inizio)}</strong></span>
+                  <span>Scadenza: <strong className="text-on-surface">{fmtData(subAttuale.data_scadenza)}</strong></span>
+                  <span>Lezioni: <strong className="text-on-surface">{subAttuale.lezioni_usate ?? 0} / {subAttuale.lezioni_totali ?? '—'}</strong></span>
+                  <span>Pagato: <strong className="text-on-surface">{subAttuale.prezzo_pagato != null ? `€ ${Number(subAttuale.prezzo_pagato).toLocaleString('it-IT')}` : '—'}</strong></span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 bg-surface rounded-2xl border border-outline-variant/20 text-sm text-on-surface-variant text-center">
+                Nessun abbonamento registrato
+              </div>
+            )}
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <InfoRow icon={<Award size={16} strokeWidth={1.5} />} label="Scadenza tessera" value={fmtData(utente.tessera_scadenza)} />
+            <InfoRow icon={<FileText size={16} strokeWidth={1.5} />} label="Scadenza certificato medico" value={fmtData(utente.cert_medico_scadenza)} />
+          </div>
+
+          {subOrdinati.length > 1 && (
+            <div>
+              <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-2 mt-2">Storico abbonamenti</p>
+              <div className="space-y-1.5">
+                {subOrdinati.slice(1).map((s: any) => (
+                  <div key={s.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5 bg-surface rounded-xl border border-outline-variant/10 text-xs">
+                    <span className="font-semibold text-on-surface truncate">{s.plans?.nome ?? 'Piano'}</span>
+                    <span className="text-on-surface-variant flex-shrink-0">{fmtData(s.data_inizio)} → {fmtData(s.data_scadenza)}</span>
+                    {statoBadge(s.stato)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 
