@@ -13,6 +13,8 @@ function ImagePicker({ value, onChange }: { value: string; onChange: (url: strin
   const [uploading, setUploading] = useState(false);
   const [loadingGallery, setLoadingGallery] = useState(false);
   const [open, setOpen]         = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ name: string; url: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const fileRef                 = useRef<HTMLInputElement>(null);
 
   const loadGallery = async () => {
@@ -44,6 +46,20 @@ function ImagePicker({ value, onChange }: { value: string; onChange: (url: strin
     }
     setUploading(false);
     e.target.value = '';
+  };
+
+  const handleDeleteImage = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await supabase.storage.from(BUCKET).remove([deleteTarget.name]);
+    setDeleting(false);
+    if (error) {
+      alert('Errore eliminazione: ' + error.message);
+      return;
+    }
+    if (value === deleteTarget.url) onChange('');
+    setGallery(g => g.filter(img => img.name !== deleteTarget.name));
+    setDeleteTarget(null);
   };
 
   const inp = 'w-full bg-surface border border-outline-variant rounded-2xl px-4 py-3 text-on-surface text-sm placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all';
@@ -110,17 +126,21 @@ function ImagePicker({ value, onChange }: { value: string; onChange: (url: strin
               ) : (
                 <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
                   {gallery.map(img => (
-                    <button key={img.name} type="button"
-                      onClick={() => { onChange(img.url); setOpen(false); }}
-                      className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${value === img.url ? 'border-primary' : 'border-transparent hover:border-primary/40'}`}
-                    >
-                      <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
-                      {value === img.url && (
-                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                          <Check size={16} className="text-primary" />
-                        </div>
-                      )}
-                    </button>
+                    <div key={img.name} className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${value === img.url ? 'border-primary' : 'border-transparent hover:border-primary/40'}`}>
+                      <button type="button" onClick={() => { onChange(img.url); setOpen(false); }} className="block w-full h-full">
+                        <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
+                        {value === img.url && (
+                          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                            <Check size={16} className="text-primary" />
+                          </div>
+                        )}
+                      </button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteTarget(img); }}
+                        className="absolute top-1 right-1 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-red-500 transition-colors"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -128,6 +148,40 @@ function ImagePicker({ value, onChange }: { value: string; onChange: (url: strin
           )}
         </div>
       )}
+
+      {/* Conferma eliminazione immagine */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center px-4"
+          >
+            <motion.div initial={{ opacity: 0, y: 16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-7 space-y-5"
+            >
+              <div>
+                <p className="text-[10px] font-label uppercase tracking-widest text-red-500 mb-1">Elimina immagine</p>
+                <h3 className="font-serif text-lg text-on-surface">Sei sicuro di voler eliminare questa immagine?</h3>
+                <p className="text-sm text-on-surface-variant mt-1">L'immagine verrà rimossa definitivamente dallo storage e non sarà più disponibile nella galleria.</p>
+              </div>
+              <div className="rounded-2xl overflow-hidden border border-outline-variant/30 h-32">
+                <img src={deleteTarget.url} alt="" className="w-full h-full object-cover" />
+              </div>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setDeleteTarget(null)} disabled={deleting}
+                  className="flex-1 py-3 rounded-2xl border border-outline-variant/40 text-sm text-on-surface-variant hover:border-outline-variant transition-all disabled:opacity-50"
+                >
+                  Annulla
+                </button>
+                <button type="button" onClick={handleDeleteImage} disabled={deleting}
+                  className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-all disabled:opacity-60"
+                >
+                  {deleting ? 'Eliminazione...' : 'Sì, elimina'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -564,6 +618,7 @@ export default function EventsManagementPanel() {
   const [participants, setParticipants] = useState<SpecialEvent | null>(null);
   const [notifyEvent, setNotifyEvent]   = useState<SpecialEvent | null>(null);
   const [msg, setMsg]           = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [view, setView]         = useState<'eventi' | 'contenuti'>('eventi');
   const [filter, setFilter]     = useState<'tutti' | 'prossimi' | 'passati'>('prossimi');
   const [heroImage, setHeroImage] = useState('');
   const [savingHero, setSavingHero] = useState(false);
@@ -661,6 +716,34 @@ export default function EventsManagementPanel() {
   return (
     <div className="space-y-5">
 
+      {/* Sotto-menu vista */}
+      <div className="flex gap-2">
+        {([
+          { id: 'eventi' as const,    label: 'Gli eventi' },
+          { id: 'contenuti' as const, label: 'Testi homepage e immagini' },
+        ]).map(t => (
+          <button key={t.id} onClick={() => setView(t.id)}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all ${view === t.id ? 'bg-primary text-white shadow-md' : 'bg-surface-container-low border border-outline-variant/40 text-on-surface-variant hover:text-on-surface'}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {msg && (
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm ${msg.type === 'success' ? 'border border-primary/20 text-primary' : 'bg-red-50 border border-red-200 text-red-600'}`}
+            style={msg.type === 'success' ? { background: 'rgba(181,106,86,0.07)' } : {}}
+          >
+            {msg.type === 'success' ? <Check size={15} /> : <AlertCircle size={15} />}
+            {msg.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {view === 'contenuti' && (
+      <>
       {/* Testi sezione homepage */}
       <div className="bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-5 space-y-4">
         <div>
@@ -701,7 +784,11 @@ export default function EventsManagementPanel() {
         <ImagePicker value={heroImage} onChange={url => { setHeroImage(url); saveHeroImage(url); }} />
         {savingHero && <p className="text-xs text-primary mt-2">Salvataggio...</p>}
       </div>
+      </>
+      )}
 
+      {view === 'eventi' && (
+      <>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex gap-2">
           {(['prossimi', 'tutti', 'passati'] as const).map(f => (
@@ -719,18 +806,6 @@ export default function EventsManagementPanel() {
           <Plus size={15} /> Nuovo evento
         </motion.button>
       </div>
-
-      <AnimatePresence>
-        {msg && (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm ${msg.type === 'success' ? 'border border-primary/20 text-primary' : 'bg-red-50 border border-red-200 text-red-600'}`}
-            style={msg.type === 'success' ? { background: 'rgba(181,106,86,0.07)' } : {}}
-          >
-            {msg.type === 'success' ? <Check size={15} /> : <AlertCircle size={15} />}
-            {msg.text}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {loading ? (
         <div className="text-center py-16 font-serif italic text-on-surface-variant">Caricamento eventi...</div>
@@ -803,6 +878,8 @@ export default function EventsManagementPanel() {
             );
           })}
         </div>
+      )}
+      </>
       )}
 
       <AnimatePresence>
