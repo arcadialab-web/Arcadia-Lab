@@ -273,28 +273,28 @@ export default function AdminDashboard() {
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
             {PERIODO_OPZIONI.map(o => (
               <button key={o.id} onClick={() => setFiltroPeriodo(o.id)}
-                className={`text-xs font-bold px-4 py-2 rounded-full transition-all ${filtroPeriodo === o.id ? 'bg-primary/15 text-primary' : 'bg-surface-container text-on-surface-variant hover:bg-primary/10 hover:text-primary'}`}>
+                className={`flex-shrink-0 text-xs font-bold px-4 py-2 rounded-full transition-all ${filtroPeriodo === o.id ? 'bg-primary/15 text-primary' : 'bg-surface-container text-on-surface-variant hover:bg-primary/10 hover:text-primary'}`}>
                 {o.label}
               </button>
             ))}
+            {filtroPeriodo === 'personalizzato' && (
+              <>
+                <div className="flex-shrink-0 flex items-center gap-1.5">
+                  <label className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Dal</label>
+                  <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
+                    className="bg-surface border border-outline-variant/50 rounded-2xl px-3 py-1.5 text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all" />
+                </div>
+                <div className="flex-shrink-0 flex items-center gap-1.5">
+                  <label className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Al</label>
+                  <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
+                    className="bg-surface border border-outline-variant/50 rounded-2xl px-3 py-1.5 text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all" />
+                </div>
+              </>
+            )}
           </div>
-          {filtroPeriodo === 'personalizzato' && (
-            <div className="flex flex-wrap items-end gap-3 mt-1">
-              <div>
-                <label className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1.5">Dal</label>
-                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
-                  className="bg-surface border border-outline-variant/50 rounded-2xl px-4 py-2 text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1.5">Al</label>
-                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
-                  className="bg-surface border border-outline-variant/50 rounded-2xl px-4 py-2 text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all" />
-              </div>
-            </div>
-          )}
         </div>
 
         {(filtroTipo === 'tutto') && (
