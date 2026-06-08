@@ -67,6 +67,38 @@ function rangeIncassi(periodo: PeriodoIncasso, customStart: string, customEnd: s
   }
 }
 
+function serieIncassi(righe: { created_at: string; prezzo_pagato: number | null }[], start: Date, end: Date) {
+  const giorni = Math.round((end.getTime() - start.getTime()) / 86400000);
+
+  if (giorni > 31) {
+    // raggruppa per mese
+    const arr: { label: string; ricavi: number }[] = [];
+    const cursore = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (cursore < end) {
+      const meseStart = new Date(cursore);
+      const meseEnd   = new Date(cursore.getFullYear(), cursore.getMonth() + 1, 1);
+      const ricavi = righe
+        .filter(r => { const t = new Date(r.created_at).getTime(); return t >= meseStart.getTime() && t < meseEnd.getTime(); })
+        .reduce((s, r) => s + (r.prezzo_pagato || 0), 0);
+      arr.push({ label: MESI[cursore.getMonth()], ricavi });
+      cursore.setMonth(cursore.getMonth() + 1);
+    }
+    return arr;
+  }
+
+  // raggruppa per giorno
+  const arr: { label: string; ricavi: number }[] = [];
+  for (let d = new Date(start); d < end; d = new Date(d.getTime() + 86400000)) {
+    const giornoStart = d.getTime();
+    const giornoEnd   = giornoStart + 86400000;
+    const ricavi = righe
+      .filter(r => { const t = new Date(r.created_at).getTime(); return t >= giornoStart && t < giornoEnd; })
+      .reduce((s, r) => s + (r.prezzo_pagato || 0), 0);
+    arr.push({ label: d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }), ricavi });
+  }
+  return arr;
+}
+
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
@@ -84,7 +116,6 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState({ abbonatiAttivi: 0, ricaviMese: 0, totaleUtenti: 0, tassoRinnovo: 0 });
-  const [revenueData, setRevenueData]     = useState<{ mese: string; ricavi: number }[]>([]);
   const [planData, setPlanData]           = useState<{ name: string; value: number; color: string }[]>([]);
   const [attivita, setAttivita]           = useState<any[]>([]);
 
@@ -97,6 +128,7 @@ export default function AdminDashboard() {
   const [customEnd, setCustomEnd]         = useState<string>(filtriSalvati.customEnd ?? '');
   const [loadingIncassi, setLoadingIncassi] = useState(true);
   const [incassi, setIncassi] = useState({ totale: 0, abbonamenti: 0, eventi: 0 });
+  const [incassiSerie, setIncassiSerie] = useState<{ label: string; ricavi: number }[]>([]);
 
   useEffect(() => {
     localStorage.setItem(FILTRI_KEY, JSON.stringify({ tipo: filtroTipo, periodo: filtroPeriodo, customStart, customEnd }));
@@ -106,13 +138,19 @@ export default function AdminDashboard() {
     setLoadingIncassi(true);
     const [start, end] = rangeIncassi(filtroPeriodo, customStart, customEnd);
     const [{ data: subsData }, { data: ticketsData }] = await Promise.all([
-      supabase.from('subscriptions').select('prezzo_pagato').gte('created_at', start.toISOString()).lt('created_at', end.toISOString()),
-      supabase.from('event_tickets').select('prezzo_pagato').gte('created_at', start.toISOString()).lt('created_at', end.toISOString()),
+      supabase.from('subscriptions').select('prezzo_pagato, created_at').gte('created_at', start.toISOString()).lt('created_at', end.toISOString()),
+      supabase.from('event_tickets').select('prezzo_pagato, created_at').gte('created_at', start.toISOString()).lt('created_at', end.toISOString()),
     ]);
     const abbonamenti = subsData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0;
     const eventi      = ticketsData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0;
     const totale = filtroTipo === 'abbonamenti' ? abbonamenti : filtroTipo === 'eventi' ? eventi : abbonamenti + eventi;
+
+    const righe = filtroTipo === 'abbonamenti' ? (subsData || [])
+      : filtroTipo === 'eventi' ? (ticketsData || [])
+      : [...(subsData || []), ...(ticketsData || [])];
+
     setIncassi({ totale, abbonamenti, eventi });
+    setIncassiSerie(serieIncassi(righe, start, end));
     setLoadingIncassi(false);
   };
 
@@ -122,7 +160,6 @@ export default function AdminDashboard() {
     setLoading(true);
     const oggi = new Date();
     const startMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1).toISOString();
-    const startAnno = new Date(oggi.getFullYear(), 0, 1).toISOString();
 
     const [
       { count: abbonatiAttivi },
@@ -130,7 +167,6 @@ export default function AdminDashboard() {
       { data: ricaviMeseTicketData },
       { count: totaleUtenti },
       { count: totSub },
-      { data: subsAnno },
       { data: activeSubs },
       { data: recentSubs },
     ] = await Promise.all([
@@ -139,7 +175,6 @@ export default function AdminDashboard() {
       supabase.from('event_tickets').select('prezzo_pagato').gte('created_at', startMese),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).neq('role', 'admin'),
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }),
-      supabase.from('subscriptions').select('prezzo_pagato, created_at').gte('created_at', startAnno),
       supabase.from('subscriptions').select('plans(nome)').eq('stato', 'attivo'),
       supabase.from('subscriptions')
         .select('created_at, stato, prezzo_pagato, profiles(email, nome, cognome), plans(nome)')
@@ -149,13 +184,6 @@ export default function AdminDashboard() {
     const ricaviMese = (ricaviMeseSubData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0)
       + (ricaviMeseTicketData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0);
     const tassoRinnovo = totSub ? Math.round(((abbonatiAttivi || 0) / totSub) * 100) : 0;
-
-    // Revenue per mese
-    const revData = MESI.map((mese, idx) => ({
-      mese,
-      ricavi: subsAnno?.filter(s => new Date(s.created_at).getMonth() === idx)
-        .reduce((sum, s) => sum + (s.prezzo_pagato || 0), 0) || 0,
-    }));
 
     // Distribuzione piani
     const planCounts: Record<string, number> = {};
@@ -171,7 +199,6 @@ export default function AdminDashboard() {
     }));
 
     setKpis({ abbonatiAttivi: abbonatiAttivi || 0, ricaviMese, totaleUtenti: totaleUtenti || 0, tassoRinnovo });
-    setRevenueData(revData);
     setPlanData(planArr);
     setAttivita(recentSubs || []);
     setLoading(false);
@@ -179,7 +206,6 @@ export default function AdminDashboard() {
 
   useEffect(() => { load(); }, []);
 
-  const totaleAnno = revenueData.reduce((a, b) => a + b.ricavi, 0);
 
   const kpiCards = [
     { label: 'Abbonati attivi',  value: String(kpis.abbonatiAttivi),              icon: Users,         sub: 'abbonamenti in corso' },
@@ -272,7 +298,7 @@ export default function AdminDashboard() {
         </div>
 
         {(filtroTipo === 'tutto') && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="rounded-2xl p-4 bg-surface-container">
               <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-1">Abbonamenti</p>
               <p className="text-lg font-serif font-bold text-on-surface">€ {incassi.abbonamenti.toLocaleString('it-IT')}</p>
@@ -283,23 +309,10 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-      </motion.div>
 
-      {/* Ricavi anno */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className={card}>
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h3 className="font-serif text-xl text-on-surface">Ricavi annuali</h3>
-            <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mt-0.5">Anno corrente</p>
-          </div>
-          <div className="text-right">
-            <p className="text-2xl font-serif font-bold text-primary">€ {totaleAnno.toLocaleString('it-IT')}</p>
-            <p className="text-xs text-on-surface-variant">Totale anno</p>
-          </div>
-        </div>
         <div style={{ height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+            <AreaChart data={incassiSerie} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id="gR" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={T} stopOpacity={0.3} />
@@ -307,7 +320,7 @@ export default function AdminDashboard() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#efebdf" vertical={false} />
-              <XAxis dataKey="mese" tick={{ fontSize: 11, fill: '#5a544c', fontFamily: 'Manrope' }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#5a544c', fontFamily: 'Manrope' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#5a544c', fontFamily: 'Manrope' }} axisLine={false} tickLine={false} tickFormatter={v => `€${v}`} />
               <Tooltip content={<CustomTooltip />} />
               <Area type="monotone" dataKey="ricavi" name="Ricavi" stroke={T} strokeWidth={2.5} fill="url(#gR)" dot={{ fill: T, strokeWidth: 0, r: 3 }} activeDot={{ r: 6 }} />
