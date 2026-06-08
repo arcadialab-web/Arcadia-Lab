@@ -111,6 +111,13 @@ function buildEmail(opts: {
         ? `Grazie per aver scelto <strong>Arcadia Lab.</strong><br/>Abbiamo creato il tuo account con: <strong>${email}</strong>`
         : `Grazie per aver rinnovato con <strong>Arcadia Lab.</strong><br/>Il piano <strong>${planNome}</strong> è ora attivo.`}
     </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff4e0;border:1px solid #f0d4c4;border-radius:12px;margin-bottom:24px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0;font-size:13px;color:#8a5a3a;line-height:1.6;font-family:sans-serif;">
+          📬 <strong>Non vedi l'email tra pochi minuti?</strong> Controlla anche nella cartella <strong>Spam / Posta indesiderata</strong>.
+        </p>
+      </td></tr>
+    </table>
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f1e8;border-radius:16px;margin-bottom:24px;">
       <tr><td style="padding:18px 24px;">
         <p style="margin:0 0 4px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#5a544c;font-family:sans-serif;">Piano acquistato</p>
@@ -300,6 +307,14 @@ Deno.serve(async (req) => {
       Ciao <strong>${nome} ${cognome}</strong>,<br/>
       la tua prenotazione per l'evento <strong>${eventTitolo}</strong> è confermata.
     </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff4e0;border:1px solid #f0d4c4;border-radius:12px;margin-bottom:24px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0;font-size:13px;color:#8a5a3a;line-height:1.6;font-family:sans-serif;">
+          📬 <strong>Non vedi l'email tra pochi minuti?</strong> Controlla anche nella cartella <strong>Spam / Posta indesiderata</strong>.
+        </p>
+      </td></tr>
+    </table>
 
     <!-- Codice riferimento -->
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f1e8;border-radius:16px;margin-bottom:24px;">
