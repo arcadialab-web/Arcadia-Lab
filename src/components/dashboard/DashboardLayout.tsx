@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { LogOut, Menu, X, ShieldAlert, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useSiteSettings } from '../../context/SiteSettingsContext';
 import { supabase } from '../../lib/supabase';
 
 interface NavItem {
@@ -23,6 +24,7 @@ const BOOKINGS_SEEN_KEY = 'admin_bookings_last_seen';
 
 export default function DashboardLayout({ navItems, activeSection, onSectionChange, children, isAdmin }: Props) {
   const { user, signOut } = useAuth();
+  const { requireMedicalCert } = useSiteSettings();
   const [sidebarOpen, setSidebarOpen]               = useState(false);
   const [prenotazioniSbloccate, setPrenotazioni]    = useState<boolean | null>(null);
   const [hasActiveSub, setHasActiveSub]             = useState(false);
@@ -59,7 +61,7 @@ export default function DashboardLayout({ navItems, activeSection, onSectionChan
     }
   }, [isAdmin, activeSection]);
 
-  const mostraBannerCertificato = !isAdmin && hasActiveSub && prenotazioniSbloccate === false;
+  const mostraBannerCertificato = !isAdmin && hasActiveSub && prenotazioniSbloccate === false && requireMedicalCert;
 
   const activeLabel = navItems.find(n => n.id === activeSection)?.label ?? '';
 
