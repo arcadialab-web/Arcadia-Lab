@@ -7,7 +7,7 @@ import {
   LayoutDashboard, BarChart2, CreditCard, Users,
   Settings, CalendarCheck, BookOpen, Star, PackagePlus,
   CheckCircle2, XCircle, Lock, Mail, AlertCircle, Inbox,
-  Phone, Award, FileText, Calendar,
+  Phone, Award, FileText, Calendar, UserPlus, Euro,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
@@ -150,6 +150,7 @@ function UsersPanel() {
   const [loading, setLoading]   = useState(true);
   const [unlockTarget, setUnlockTarget] = useState<any>(null);
   const [detailTarget, setDetailTarget] = useState<any>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   const load = () => {
     supabase
@@ -173,6 +174,13 @@ function UsersPanel() {
       <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-800">
         <Lock size={14} className="flex-shrink-0 mt-0.5 text-blue-600" strokeWidth={1.5} />
         <p>Clicca su <strong>"Sblocca"</strong> per abilitare le prenotazioni dopo aver ricevuto il certificato medico. Puoi inserire la data di scadenza del certificato per blocco automatico.</p>
+      </div>
+      <div className="flex justify-end">
+        <button onClick={() => setAddOpen(true)}
+          className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-4 py-2.5 rounded-full bg-primary text-on-primary hover:opacity-90 transition-opacity"
+        >
+          <UserPlus size={14} strokeWidth={2} /> Aggiungi utente
+        </button>
       </div>
       <div className="bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] overflow-hidden">
         <div className="overflow-x-auto">
@@ -278,7 +286,173 @@ function UsersPanel() {
           <UserDetailModal utente={detailTarget} onClose={() => setDetailTarget(null)} />
         )}
       </AnimatePresence>
+      <AnimatePresence>
+        {addOpen && (
+          <AddUserModal onClose={() => setAddOpen(false)} onDone={() => { setAddOpen(false); load(); }} />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+// ── Modal aggiungi utente manualmente (pagamento contanti) ─────
+function AddUserModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const { tesseraPrezzo, requireMedicalCert } = useSiteSettings();
+  const [piani, setPiani] = useState<any[]>([]);
+  const [nome, setNome] = useState('');
+  const [cognome, setCognome] = useState('');
+  const [email, setEmail] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [planId, setPlanId] = useState('');
+  const [aggiungiTessera, setAggiungiTessera] = useState(false);
+  const [importoPagato, setImportoPagato] = useState('');
+  const [sbloccaPrenotazioni, setSbloccaPrenotazioni] = useState(false);
+  const [importoTouched, setImportoTouched] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    supabase.from('plans').select('*').eq('is_attivo', true).order('ordine')
+      .then(({ data }) => {
+        setPiani(data || []);
+        if (data && data.length > 0) setPlanId(data[0].id);
+      });
+  }, []);
+
+  const planSelezionato = piani.find(p => p.id === planId);
+
+  // Precompila l'importo pagato in base al piano + tessera, finché l'admin non lo modifica manualmente
+  useEffect(() => {
+    if (importoTouched || !planSelezionato) return;
+    const totale = Number(planSelezionato.prezzo ?? 0) + (aggiungiTessera ? tesseraPrezzo : 0);
+    setImportoPagato(String(totale));
+  }, [planSelezionato, aggiungiTessera, tesseraPrezzo, importoTouched]);
+
+  const handleSubmit = async () => {
+    setError('');
+    if (!nome.trim() || !cognome.trim() || !email.trim() || !planId) {
+      setError('Compila nome, cognome, email e seleziona un piano.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke('admin-create-user', {
+        body: {
+          nome: nome.trim(),
+          cognome: cognome.trim(),
+          email: email.trim(),
+          telefono: telefono.trim() || null,
+          plan_id: planId,
+          aggiungi_tessera: aggiungiTessera,
+          importo_pagato: importoPagato === '' ? 0 : Number(importoPagato),
+          sblocca_prenotazioni: sbloccaPrenotazioni,
+        },
+      });
+      if (fnErr || data?.error) throw new Error(data?.error || fnErr?.message || 'Errore sconosciuto');
+      onDone();
+    } catch (e: any) {
+      setError(e?.message || 'Errore durante la creazione dell\'utente.');
+      setLoading(false);
+    }
+  };
+
+  return createPortal(
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      onClick={e => e.target === e.currentTarget && !loading && onClose()}
+    >
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96 }} transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+        className="bg-white w-full max-w-lg mx-auto rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+      >
+        <div className="px-6 pt-6 pb-4 border-b border-outline-variant/10 flex items-start justify-between flex-shrink-0">
+          <div>
+            <p className="text-[10px] font-label uppercase tracking-[0.25em] text-primary mb-1">Nuovo utente</p>
+            <h3 className="font-serif text-lg text-on-surface">Aggiungi utente manualmente</h3>
+          </div>
+          <button onClick={onClose} disabled={loading} className="w-9 h-9 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant flex-shrink-0">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4 overflow-y-auto">
+          <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-800">
+            <Euro size={14} className="flex-shrink-0 mt-0.5 text-blue-600" strokeWidth={1.5} />
+            <p>Usa questo form per registrare un cliente che ha pagato in contanti o di persona. Verrà creato l'account e inviata l'email di benvenuto con le credenziali, senza passare da Stripe.</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1.5">Nome *</label>
+              <input value={nome} onChange={e => setNome(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1.5">Cognome *</label>
+              <input value={cognome} onChange={e => setCognome(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1.5">Email *</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1.5">Telefono</label>
+            <input value={telefono} onChange={e => setTelefono(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1.5">Piano abbonamento *</label>
+            <select value={planId} onChange={e => setPlanId(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+              {piani.map(p => (
+                <option key={p.id} value={p.id}>{p.nome} — € {Number(p.prezzo).toLocaleString('it-IT')}</option>
+              ))}
+            </select>
+          </div>
+
+          <label className="flex items-center gap-2.5 text-sm text-on-surface cursor-pointer">
+            <input type="checkbox" checked={aggiungiTessera} onChange={e => setAggiungiTessera(e.target.checked)} className="w-4 h-4 rounded accent-primary" />
+            Aggiungi tessera associativa annuale (€ {tesseraPrezzo.toLocaleString('it-IT')})
+          </label>
+
+          {requireMedicalCert && (
+            <label className="flex items-center gap-2.5 text-sm text-on-surface cursor-pointer">
+              <input type="checkbox" checked={sbloccaPrenotazioni} onChange={e => setSbloccaPrenotazioni(e.target.checked)} className="w-4 h-4 rounded accent-primary" />
+              Certificato medico già ricevuto — sblocca subito le prenotazioni
+            </label>
+          )}
+
+          <div>
+            <label className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-1.5">Importo pagato (€)</label>
+            <input
+              type="number" min="0" step="0.01" value={importoPagato}
+              onChange={e => { setImportoTouched(true); setImportoPagato(e.target.value); }}
+              className="w-full px-4 py-2.5 rounded-xl border border-outline-variant/30 bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <p className="mt-1.5 text-xs text-on-surface-variant">Precompilato in base al piano scelto, modificabile liberamente. Verrà conteggiato negli incassi nella Panoramica.</p>
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+              <AlertCircle size={14} className="flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+              <p>{error}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 py-4 border-t border-outline-variant/10 flex justify-end gap-3 flex-shrink-0">
+          <button onClick={onClose} disabled={loading} className="px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-surface-container transition-colors">
+            Annulla
+          </button>
+          <button onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest bg-primary text-on-primary hover:opacity-90 transition-opacity disabled:opacity-60">
+            {loading && <Loader2 size={14} className="animate-spin" />}
+            Crea utente
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 
