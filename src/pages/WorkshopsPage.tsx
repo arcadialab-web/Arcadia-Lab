@@ -4,6 +4,7 @@ import { Calendar, MapPin, ArrowLeft, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -109,10 +110,16 @@ function TicketModal({ evento, onClose, isAbbonato }: {
 // ── Pagina principale ─────────────────────────────────────────
 export default function WorkshopsPage() {
   const { user }    = useAuth();
+  const { preLancio } = useSiteSettings();
   const [events, setEvents]       = useState<SpecialEvent[]>([]);
   const [loading, setLoading]     = useState(true);
   const [isAbbonato, setAbbonato] = useState(false);
   const [selected, setSelected]   = useState<SpecialEvent | null>(null);
+
+  const handleSelect = (ev: SpecialEvent) => {
+    if (preLancio) { window.location.href = '/#register'; return; }
+    setSelected(ev);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -213,10 +220,10 @@ export default function WorkshopsPage() {
                           )}
                         </div>
                         <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                          onClick={() => setSelected(ev)}
+                          onClick={() => handleSelect(ev)}
                           className="bg-primary text-white px-6 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-lg hover:bg-opacity-90 transition-all"
                         >
-                          {prezzoTot === 0 ? 'Prenota' : 'Acquista'}
+                          {preLancio ? 'Iscriviti' : prezzoTot === 0 ? 'Prenota' : 'Acquista'}
                         </motion.button>
                       </div>
                     </div>

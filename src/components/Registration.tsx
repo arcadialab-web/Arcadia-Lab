@@ -180,8 +180,8 @@ export default function Registration() {
                   </div>
 
                   <div className="flex flex-col gap-2 relative group">
-                    <label htmlFor="note" className={labelClass}>Note aggiuntive (Esperienza pregressa, infortuni, etc.)</label>
-                    <textarea id="note" name="note" rows={3} className={`${fieldClass} resize-none`} placeholder="Scrivi qui eventuali comunicazioni..."></textarea>
+                    <label htmlFor="note" className={labelClass}>Note aggiuntive (Esperienza pregressa, infortuni, interesse per i workshop, etc.)</label>
+                    <textarea id="note" name="note" rows={3} className={`${fieldClass} resize-none`} placeholder="Scrivi qui eventuali comunicazioni, ad esempio se sei interessata/o ai workshop..."></textarea>
                   </div>
 
                   <div className="space-y-5 pt-8 border-t border-outline-variant/20">
