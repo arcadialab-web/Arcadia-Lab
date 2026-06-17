@@ -68,8 +68,8 @@ function ImagePicker({ value, onChange }: { value: string; onChange: (url: strin
     <div className="space-y-2">
       {/* Preview */}
       {value && (
-        <div className="relative w-full h-36 rounded-2xl overflow-hidden border border-outline-variant/30">
-          <img src={value} alt="Preview" className="w-full h-full object-cover" />
+        <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-outline-variant/30 bg-surface-container-low">
+          <img src={value} alt="Preview" className="w-full h-full object-contain" />
           <button type="button" onClick={() => onChange('')}
             className="absolute top-2 right-2 w-7 h-7 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-red-500 transition-colors"
           >
