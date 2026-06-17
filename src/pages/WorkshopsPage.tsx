@@ -174,8 +174,7 @@ export default function WorkshopsPage() {
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
               className="text-5xl md:text-7xl font-serif text-on-surface leading-tight mb-6"
             >
-              {pageTexts.titolo1} — <br />
-              <span className="italic text-primary">{pageTexts.titolo2}</span>
+              {pageTexts.titolo1} — <span className="italic text-primary">{pageTexts.titolo2}</span>
             </motion.h1>
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
               className="text-xl text-on-surface-variant max-w-2xl font-light leading-relaxed"
