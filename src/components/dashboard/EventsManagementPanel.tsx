@@ -634,11 +634,12 @@ export default function EventsManagementPanel() {
     bottone:  'Scopri gli eventi',
   });
   const [savingTexts, setSavingTexts] = useState(false);
-  const [workshopTexts, setWorkshopTexts] = useState({
-    titolo:      'Oltre le lezioni — Workshop domenicali',
+  const [pageTexts, setPageTexts] = useState({
+    titolo1:     'Oltre le lezioni',
+    titolo2:     'Workshop domenicali',
     sottotitolo: 'Approfondimenti mensili dedicati a temi specifici. Un tempo dilatato per la tua crescita personale e la tua pratica.',
   });
-  const [savingWorkshopTexts, setSavingWorkshopTexts] = useState(false);
+  const [savingPageTexts, setSavingPageTexts] = useState(false);
 
   const notify = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 3000);
@@ -650,7 +651,7 @@ export default function EventsManagementPanel() {
       supabase.from('special_events').select('*').order('data_evento', { ascending: false }),
       supabase.from('site_settings').select('key, value').in('key', [
         'events_hero_image', 'events_label', 'events_titolo', 'events_sottotitolo', 'events_bottone',
-        'workshops_titolo', 'workshops_sottotitolo',
+        'workshops_page_titolo1', 'workshops_page_titolo2', 'workshops_page_sottotitolo',
       ]),
     ]);
     setEvents(ev || []);
@@ -663,9 +664,10 @@ export default function EventsManagementPanel() {
       sottotitolo: s['events_sottotitolo'] ?? t.sottotitolo,
       bottone:     s['events_bottone']     ?? t.bottone,
     }));
-    setWorkshopTexts(t => ({
-      titolo:      s['workshops_titolo']      ?? t.titolo,
-      sottotitolo: s['workshops_sottotitolo'] ?? t.sottotitolo,
+    setPageTexts(t => ({
+      titolo1:     s['workshops_page_titolo1']     ?? t.titolo1,
+      titolo2:     s['workshops_page_titolo2']     ?? t.titolo2,
+      sottotitolo: s['workshops_page_sottotitolo'] ?? t.sottotitolo,
     }));
     setLoading(false);
   };
@@ -680,18 +682,6 @@ export default function EventsManagementPanel() {
     else notify('success', 'Immagine homepage salvata.');
   };
 
-  const saveWorkshopTexts = async () => {
-    setSavingWorkshopTexts(true);
-    const rows = [
-      { key: 'workshops_titolo',      value: workshopTexts.titolo },
-      { key: 'workshops_sottotitolo', value: workshopTexts.sottotitolo },
-    ];
-    const { error } = await supabase.from('site_settings').upsert(rows, { onConflict: 'key' });
-    setSavingWorkshopTexts(false);
-    if (error) notify('error', 'Errore salvataggio testi: ' + error.message);
-    else notify('success', 'Testi pagina workshop salvati.');
-  };
-
   const saveSectionTexts = async () => {
     setSavingTexts(true);
     const rows = [
@@ -704,6 +694,19 @@ export default function EventsManagementPanel() {
     setSavingTexts(false);
     if (error) notify('error', 'Errore salvataggio testi: ' + error.message);
     else notify('success', 'Testi sezione salvati.');
+  };
+
+  const savePageTexts = async () => {
+    setSavingPageTexts(true);
+    const rows = [
+      { key: 'workshops_page_titolo1',     value: pageTexts.titolo1 },
+      { key: 'workshops_page_titolo2',     value: pageTexts.titolo2 },
+      { key: 'workshops_page_sottotitolo', value: pageTexts.sottotitolo },
+    ];
+    const { error } = await supabase.from('site_settings').upsert(rows, { onConflict: 'key' });
+    setSavingPageTexts(false);
+    if (error) notify('error', 'Errore salvataggio testi: ' + error.message);
+    else notify('success', 'Testi pagina Workshop salvati.');
   };
 
   useEffect(() => { load(); }, []);
@@ -809,22 +812,26 @@ export default function EventsManagementPanel() {
       <div className="bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-5 space-y-4">
         <div>
           <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-0.5">Testi pagina Workshop</p>
-          <p className="text-xs text-on-surface-variant">Modifica il titolo e il sottotitolo che appaiono in cima alla pagina <strong>/workshops</strong>. Separati dalla sezione homepage.</p>
+          <p className="text-xs text-on-surface-variant">Modifica il titolo e il sottotitolo che appaiono nella pagina dedicata ai workshop (<span className="font-mono">/workshops</span>). Separati dai testi della homepage.</p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label className={lbl}>Prima parte del titolo</label>
+            <input className={inp} value={pageTexts.titolo1} onChange={e => setPageTexts(t => ({ ...t, titolo1: e.target.value }))} placeholder="Es. Oltre le lezioni" />
+          </div>
+          <div>
+            <label className={lbl}>Seconda parte (corsivo + colore)</label>
+            <input className={inp} value={pageTexts.titolo2} onChange={e => setPageTexts(t => ({ ...t, titolo2: e.target.value }))} placeholder="Es. Workshop domenicali" />
+          </div>
         </div>
         <div>
-          <label className={lbl}>Titolo principale</label>
-          <input className={inp} value={workshopTexts.titolo} onChange={e => setWorkshopTexts(t => ({ ...t, titolo: e.target.value }))} placeholder="Es. Oltre le lezioni — Workshop domenicali" />
+          <label className={lbl}>Sottotitolo pagina</label>
+          <textarea className={`${inp} resize-none`} rows={2} value={pageTexts.sottotitolo} onChange={e => setPageTexts(t => ({ ...t, sottotitolo: e.target.value }))} placeholder="Descrizione della pagina workshop..." />
         </div>
-        <div>
-          <label className={lbl}>Sottotitolo</label>
-          <textarea className={`${inp} resize-none`} rows={2} value={workshopTexts.sottotitolo} onChange={e => setWorkshopTexts(t => ({ ...t, sottotitolo: e.target.value }))} placeholder="Descrizione breve della pagina workshop..." />
-        </div>
-        <button
-          onClick={saveWorkshopTexts}
-          disabled={savingWorkshopTexts}
+        <button onClick={savePageTexts} disabled={savingPageTexts}
           className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-md hover:bg-opacity-90 transition-all disabled:opacity-60"
         >
-          {savingWorkshopTexts ? 'Salvataggio...' : 'Salva testi pagina workshop'}
+          {savingPageTexts ? 'Salvataggio...' : 'Salva testi pagina'}
         </button>
       </div>
 

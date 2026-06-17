@@ -108,11 +108,6 @@ function TicketModal({ evento, onClose, isAbbonato }: {
 }
 
 // ── Pagina principale ─────────────────────────────────────────
-const WORKSHOP_DEFAULTS = {
-  titolo:      'Oltre le lezioni — Workshop domenicali',
-  sottotitolo: 'Approfondimenti mensili dedicati a temi specifici. Un tempo dilatato per la tua crescita personale e la tua pratica.',
-};
-
 export default function WorkshopsPage() {
   const { user }    = useAuth();
   const { preLancio } = useSiteSettings();
@@ -120,7 +115,11 @@ export default function WorkshopsPage() {
   const [loading, setLoading]     = useState(true);
   const [isAbbonato, setAbbonato] = useState(false);
   const [selected, setSelected]   = useState<SpecialEvent | null>(null);
-  const [pageTexts, setPageTexts] = useState(WORKSHOP_DEFAULTS);
+  const [pageTexts, setPageTexts] = useState({
+    titolo1:     'Oltre le lezioni',
+    titolo2:     'Workshop domenicali',
+    sottotitolo: 'Approfondimenti mensili dedicati a temi specifici. Un tempo dilatato per la tua crescita personale e la tua pratica.',
+  });
 
   const handleSelect = (ev: SpecialEvent) => {
     if (preLancio) { window.location.href = '/#register'; return; }
@@ -132,16 +131,19 @@ export default function WorkshopsPage() {
       const [{ data: ev }, subRes, { data: settings }] = await Promise.all([
         supabase.from('special_events').select('*').eq('is_attivo', true).gte('data_evento', new Date().toISOString()).order('data_evento', { ascending: true }),
         user ? supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('stato', 'attivo') : Promise.resolve({ count: 0 }),
-        supabase.from('site_settings').select('key, value').in('key', ['workshops_titolo', 'workshops_sottotitolo']),
+        supabase.from('site_settings').select('key, value').in('key', ['workshops_page_titolo1', 'workshops_page_titolo2', 'workshops_page_sottotitolo']),
       ]);
       setEvents(ev ?? []);
       setAbbonato((subRes.count ?? 0) > 0);
-      const s: Record<string, string> = {};
-      (settings ?? []).forEach(r => { s[r.key] = r.value; });
-      setPageTexts({
-        titolo:      s['workshops_titolo']      ?? WORKSHOP_DEFAULTS.titolo,
-        sottotitolo: s['workshops_sottotitolo'] ?? WORKSHOP_DEFAULTS.sottotitolo,
-      });
+      if (settings) {
+        const s: Record<string, string> = {};
+        settings.forEach(r => { s[r.key] = r.value; });
+        setPageTexts(t => ({
+          titolo1:     s['workshops_page_titolo1']     ?? t.titolo1,
+          titolo2:     s['workshops_page_titolo2']     ?? t.titolo2,
+          sottotitolo: s['workshops_page_sottotitolo'] ?? t.sottotitolo,
+        }));
+      }
       setLoading(false);
     };
     fetchData();
@@ -172,7 +174,8 @@ export default function WorkshopsPage() {
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
               className="text-5xl md:text-7xl font-serif text-on-surface leading-tight mb-6"
             >
-              {pageTexts.titolo}
+              {pageTexts.titolo1} — <br />
+              <span className="italic text-primary">{pageTexts.titolo2}</span>
             </motion.h1>
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
               className="text-xl text-on-surface-variant max-w-2xl font-light leading-relaxed"
