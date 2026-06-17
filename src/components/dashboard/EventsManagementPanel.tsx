@@ -227,7 +227,12 @@ function EventModal({ event, onClose, onSave }: {
   onClose: () => void;
   onSave: (data: typeof emptyForm) => Promise<void>;
 }) {
-  const toInput = (dt: string) => dt ? dt.slice(0, 16) : '';
+  const toInput = (dt: string) => {
+    if (!dt) return '';
+    const d = new Date(dt);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
   const [form, setForm] = useState({
     ...emptyForm,
     ...(event ? { ...event, data_evento: toInput(event.data_evento ?? ''), posti_totali: event.posti_totali ?? '' } : {}),
@@ -684,6 +689,7 @@ export default function EventsManagementPanel() {
   const handleSave = async (form: typeof emptyForm) => {
     const payload = {
       ...form,
+      data_evento: form.data_evento ? new Date(form.data_evento).toISOString() : form.data_evento,
       posti_totali: form.posti_totali !== '' ? parseInt(form.posti_totali) : null,
       immagine_url: form.immagine_url || null,
     };
