@@ -634,6 +634,11 @@ export default function EventsManagementPanel() {
     bottone:  'Scopri gli eventi',
   });
   const [savingTexts, setSavingTexts] = useState(false);
+  const [workshopTexts, setWorkshopTexts] = useState({
+    titolo:      'Oltre le lezioni — Workshop domenicali',
+    sottotitolo: 'Approfondimenti mensili dedicati a temi specifici. Un tempo dilatato per la tua crescita personale e la tua pratica.',
+  });
+  const [savingWorkshopTexts, setSavingWorkshopTexts] = useState(false);
 
   const notify = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 3000);
@@ -645,6 +650,7 @@ export default function EventsManagementPanel() {
       supabase.from('special_events').select('*').order('data_evento', { ascending: false }),
       supabase.from('site_settings').select('key, value').in('key', [
         'events_hero_image', 'events_label', 'events_titolo', 'events_sottotitolo', 'events_bottone',
+        'workshops_titolo', 'workshops_sottotitolo',
       ]),
     ]);
     setEvents(ev || []);
@@ -657,6 +663,10 @@ export default function EventsManagementPanel() {
       sottotitolo: s['events_sottotitolo'] ?? t.sottotitolo,
       bottone:     s['events_bottone']     ?? t.bottone,
     }));
+    setWorkshopTexts(t => ({
+      titolo:      s['workshops_titolo']      ?? t.titolo,
+      sottotitolo: s['workshops_sottotitolo'] ?? t.sottotitolo,
+    }));
     setLoading(false);
   };
 
@@ -668,6 +678,18 @@ export default function EventsManagementPanel() {
     setSavingHero(false);
     if (error) notify('error', 'Errore salvataggio immagine: ' + error.message);
     else notify('success', 'Immagine homepage salvata.');
+  };
+
+  const saveWorkshopTexts = async () => {
+    setSavingWorkshopTexts(true);
+    const rows = [
+      { key: 'workshops_titolo',      value: workshopTexts.titolo },
+      { key: 'workshops_sottotitolo', value: workshopTexts.sottotitolo },
+    ];
+    const { error } = await supabase.from('site_settings').upsert(rows, { onConflict: 'key' });
+    setSavingWorkshopTexts(false);
+    if (error) notify('error', 'Errore salvataggio testi: ' + error.message);
+    else notify('success', 'Testi pagina workshop salvati.');
   };
 
   const saveSectionTexts = async () => {
@@ -780,6 +802,29 @@ export default function EventsManagementPanel() {
           className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-md hover:bg-opacity-90 transition-all disabled:opacity-60"
         >
           {savingTexts ? 'Salvataggio...' : 'Salva testi'}
+        </button>
+      </div>
+
+      {/* Testi pagina Workshop (/workshops) */}
+      <div className="bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-5 space-y-4">
+        <div>
+          <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-0.5">Testi pagina Workshop</p>
+          <p className="text-xs text-on-surface-variant">Modifica il titolo e il sottotitolo che appaiono in cima alla pagina <strong>/workshops</strong>. Separati dalla sezione homepage.</p>
+        </div>
+        <div>
+          <label className={lbl}>Titolo principale</label>
+          <input className={inp} value={workshopTexts.titolo} onChange={e => setWorkshopTexts(t => ({ ...t, titolo: e.target.value }))} placeholder="Es. Oltre le lezioni — Workshop domenicali" />
+        </div>
+        <div>
+          <label className={lbl}>Sottotitolo</label>
+          <textarea className={`${inp} resize-none`} rows={2} value={workshopTexts.sottotitolo} onChange={e => setWorkshopTexts(t => ({ ...t, sottotitolo: e.target.value }))} placeholder="Descrizione breve della pagina workshop..." />
+        </div>
+        <button
+          onClick={saveWorkshopTexts}
+          disabled={savingWorkshopTexts}
+          className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-md hover:bg-opacity-90 transition-all disabled:opacity-60"
+        >
+          {savingWorkshopTexts ? 'Salvataggio...' : 'Salva testi pagina workshop'}
         </button>
       </div>
 

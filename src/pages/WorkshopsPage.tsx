@@ -108,8 +108,7 @@ function TicketModal({ evento, onClose, isAbbonato }: {
 }
 
 // ── Pagina principale ─────────────────────────────────────────
-const PAGE_DEFAULTS = {
-  label:       'Eventi Speciali',
+const WORKSHOP_DEFAULTS = {
   titolo:      'Oltre le lezioni — Workshop domenicali',
   sottotitolo: 'Approfondimenti mensili dedicati a temi specifici. Un tempo dilatato per la tua crescita personale e la tua pratica.',
 };
@@ -121,7 +120,7 @@ export default function WorkshopsPage() {
   const [loading, setLoading]     = useState(true);
   const [isAbbonato, setAbbonato] = useState(false);
   const [selected, setSelected]   = useState<SpecialEvent | null>(null);
-  const [pageTexts, setPageTexts] = useState(PAGE_DEFAULTS);
+  const [pageTexts, setPageTexts] = useState(WORKSHOP_DEFAULTS);
 
   const handleSelect = (ev: SpecialEvent) => {
     if (preLancio) { window.location.href = '/#register'; return; }
@@ -133,16 +132,15 @@ export default function WorkshopsPage() {
       const [{ data: ev }, subRes, { data: settings }] = await Promise.all([
         supabase.from('special_events').select('*').eq('is_attivo', true).gte('data_evento', new Date().toISOString()).order('data_evento', { ascending: true }),
         user ? supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('stato', 'attivo') : Promise.resolve({ count: 0 }),
-        supabase.from('site_settings').select('key, value').in('key', ['events_label', 'events_titolo', 'events_sottotitolo']),
+        supabase.from('site_settings').select('key, value').in('key', ['workshops_titolo', 'workshops_sottotitolo']),
       ]);
       setEvents(ev ?? []);
       setAbbonato((subRes.count ?? 0) > 0);
       const s: Record<string, string> = {};
       (settings ?? []).forEach(r => { s[r.key] = r.value; });
       setPageTexts({
-        label:       s['events_label']       ?? PAGE_DEFAULTS.label,
-        titolo:      s['events_titolo']      ?? PAGE_DEFAULTS.titolo,
-        sottotitolo: s['events_sottotitolo'] ?? PAGE_DEFAULTS.sottotitolo,
+        titolo:      s['workshops_titolo']      ?? WORKSHOP_DEFAULTS.titolo,
+        sottotitolo: s['workshops_sottotitolo'] ?? WORKSHOP_DEFAULTS.sottotitolo,
       });
       setLoading(false);
     };
@@ -169,7 +167,7 @@ export default function WorkshopsPage() {
             <motion.span initial={{ opacity: 0, x: -20 }} animate={{ opacity: 0.7, x: 0 }} transition={{ delay: 0.2 }}
               className="block font-label tracking-[0.3em] uppercase text-xs text-primary mb-4"
             >
-              {pageTexts.label}
+              Eventi Speciali
             </motion.span>
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
               className="text-5xl md:text-7xl font-serif text-on-surface leading-tight mb-6"
