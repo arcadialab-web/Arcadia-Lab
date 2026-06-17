@@ -108,9 +108,11 @@ function TicketModal({ evento, onClose, isAbbonato }: {
 }
 
 // ── Pagina principale ─────────────────────────────────────────
-const DEFAULT_TITOLO      = 'Oltre le lezioni — Workshop domenicali';
-const DEFAULT_SOTTOTITOLO = 'Approfondimenti mensili dedicati a temi specifici. Un tempo dilatato per la tua crescita personale e la tua pratica.';
-const DEFAULT_LABEL       = 'Eventi Speciali';
+const PAGE_DEFAULTS = {
+  label:       'Eventi Speciali',
+  titolo:      'Oltre le lezioni — Workshop domenicali',
+  sottotitolo: 'Approfondimenti mensili dedicati a temi specifici. Un tempo dilatato per la tua crescita personale e la tua pratica.',
+};
 
 export default function WorkshopsPage() {
   const { user }    = useAuth();
@@ -119,9 +121,7 @@ export default function WorkshopsPage() {
   const [loading, setLoading]     = useState(true);
   const [isAbbonato, setAbbonato] = useState(false);
   const [selected, setSelected]   = useState<SpecialEvent | null>(null);
-  const [titolo, setTitolo]           = useState(DEFAULT_TITOLO);
-  const [sottotitolo, setSottotitolo] = useState(DEFAULT_SOTTOTITOLO);
-  const [label, setLabel]             = useState(DEFAULT_LABEL);
+  const [pageTexts, setPageTexts] = useState(PAGE_DEFAULTS);
 
   const handleSelect = (ev: SpecialEvent) => {
     if (preLancio) { window.location.href = '/#register'; return; }
@@ -133,16 +133,17 @@ export default function WorkshopsPage() {
       const [{ data: ev }, subRes, { data: settings }] = await Promise.all([
         supabase.from('special_events').select('*').eq('is_attivo', true).gte('data_evento', new Date().toISOString()).order('data_evento', { ascending: true }),
         user ? supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('stato', 'attivo') : Promise.resolve({ count: 0 }),
-        supabase.from('site_settings').select('key, value').in('key', ['events_titolo', 'events_sottotitolo', 'events_label']),
+        supabase.from('site_settings').select('key, value').in('key', ['events_label', 'events_titolo', 'events_sottotitolo']),
       ]);
       setEvents(ev ?? []);
       setAbbonato((subRes.count ?? 0) > 0);
-      if (settings) {
-        const s: Record<string, string> = Object.fromEntries(settings.map(r => [r.key, r.value]));
-        if (s['events_titolo'])      setTitolo(s['events_titolo']);
-        if (s['events_sottotitolo']) setSottotitolo(s['events_sottotitolo']);
-        if (s['events_label'])       setLabel(s['events_label']);
-      }
+      const s: Record<string, string> = {};
+      (settings ?? []).forEach(r => { s[r.key] = r.value; });
+      setPageTexts({
+        label:       s['events_label']       ?? PAGE_DEFAULTS.label,
+        titolo:      s['events_titolo']      ?? PAGE_DEFAULTS.titolo,
+        sottotitolo: s['events_sottotitolo'] ?? PAGE_DEFAULTS.sottotitolo,
+      });
       setLoading(false);
     };
     fetchData();
@@ -168,23 +169,17 @@ export default function WorkshopsPage() {
             <motion.span initial={{ opacity: 0, x: -20 }} animate={{ opacity: 0.7, x: 0 }} transition={{ delay: 0.2 }}
               className="block font-label tracking-[0.3em] uppercase text-xs text-primary mb-4"
             >
-              {label}
+              {pageTexts.label}
             </motion.span>
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-              className="text-4xl md:text-5xl lg:text-6xl font-serif text-on-surface leading-tight mb-6 whitespace-nowrap"
+              className="text-5xl md:text-7xl font-serif text-on-surface leading-tight mb-6"
             >
-              {titolo.includes(' — ') ? (
-                <>
-                  {titolo.split(' — ')[0]} — <span className="italic text-primary">{titolo.split(' — ')[1]}</span>
-                </>
-              ) : (
-                <span className="italic text-primary">{titolo}</span>
-              )}
+              {pageTexts.titolo}
             </motion.h1>
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
               className="text-xl text-on-surface-variant max-w-2xl font-light leading-relaxed"
             >
-              {sottotitolo}
+              {pageTexts.sottotitolo}
             </motion.p>
           </div>
 
