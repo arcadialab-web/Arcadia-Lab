@@ -191,11 +191,11 @@ export default function WorkshopsPage() {
                     className="bg-white rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden hover:shadow-xl transition-all duration-500 flex flex-col group"
                   >
                     {ev.immagine_url ? (
-                      <div className="h-52 overflow-hidden">
+                      <div className="aspect-video overflow-hidden">
                         <img src={ev.immagine_url} alt={ev.titolo} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                       </div>
                     ) : (
-                      <div className="h-52 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+                      <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
                         <span className="font-serif italic text-6xl text-primary/30">✦</span>
                       </div>
                     )}
