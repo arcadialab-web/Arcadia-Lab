@@ -108,6 +108,10 @@ function TicketModal({ evento, onClose, isAbbonato }: {
 }
 
 // ── Pagina principale ─────────────────────────────────────────
+const DEFAULT_TITOLO      = 'Oltre le lezioni — Workshop domenicali';
+const DEFAULT_SOTTOTITOLO = 'Approfondimenti mensili dedicati a temi specifici. Un tempo dilatato per la tua crescita personale e la tua pratica.';
+const DEFAULT_LABEL       = 'Eventi Speciali';
+
 export default function WorkshopsPage() {
   const { user }    = useAuth();
   const { preLancio } = useSiteSettings();
@@ -115,6 +119,9 @@ export default function WorkshopsPage() {
   const [loading, setLoading]     = useState(true);
   const [isAbbonato, setAbbonato] = useState(false);
   const [selected, setSelected]   = useState<SpecialEvent | null>(null);
+  const [titolo, setTitolo]           = useState(DEFAULT_TITOLO);
+  const [sottotitolo, setSottotitolo] = useState(DEFAULT_SOTTOTITOLO);
+  const [label, setLabel]             = useState(DEFAULT_LABEL);
 
   const handleSelect = (ev: SpecialEvent) => {
     if (preLancio) { window.location.href = '/#register'; return; }
@@ -123,12 +130,19 @@ export default function WorkshopsPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [{ data: ev }, subRes] = await Promise.all([
+      const [{ data: ev }, subRes, { data: settings }] = await Promise.all([
         supabase.from('special_events').select('*').eq('is_attivo', true).gte('data_evento', new Date().toISOString()).order('data_evento', { ascending: true }),
         user ? supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('stato', 'attivo') : Promise.resolve({ count: 0 }),
+        supabase.from('site_settings').select('key, value').in('key', ['events_titolo', 'events_sottotitolo', 'events_label']),
       ]);
       setEvents(ev ?? []);
       setAbbonato((subRes.count ?? 0) > 0);
+      if (settings) {
+        const s: Record<string, string> = Object.fromEntries(settings.map(r => [r.key, r.value]));
+        if (s['events_titolo'])      setTitolo(s['events_titolo']);
+        if (s['events_sottotitolo']) setSottotitolo(s['events_sottotitolo']);
+        if (s['events_label'])       setLabel(s['events_label']);
+      }
       setLoading(false);
     };
     fetchData();
@@ -154,18 +168,23 @@ export default function WorkshopsPage() {
             <motion.span initial={{ opacity: 0, x: -20 }} animate={{ opacity: 0.7, x: 0 }} transition={{ delay: 0.2 }}
               className="block font-label tracking-[0.3em] uppercase text-xs text-primary mb-4"
             >
-              Eventi Speciali
+              {label}
             </motion.span>
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-              className="text-5xl md:text-7xl font-serif text-on-surface leading-tight mb-6"
+              className="text-4xl md:text-5xl lg:text-6xl font-serif text-on-surface leading-tight mb-6 whitespace-nowrap"
             >
-              Oltre le lezioni — <br />
-              <span className="italic text-primary">Workshop domenicali</span>
+              {titolo.includes(' — ') ? (
+                <>
+                  {titolo.split(' — ')[0]} — <span className="italic text-primary">{titolo.split(' — ')[1]}</span>
+                </>
+              ) : (
+                <span className="italic text-primary">{titolo}</span>
+              )}
             </motion.h1>
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
               className="text-xl text-on-surface-variant max-w-2xl font-light leading-relaxed"
             >
-              Approfondimenti mensili dedicati a temi specifici. Un tempo dilatato per la tua crescita personale e la tua pratica.
+              {sottotitolo}
             </motion.p>
           </div>
 
