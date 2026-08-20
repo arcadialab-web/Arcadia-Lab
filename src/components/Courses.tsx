@@ -1,13 +1,59 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
+
+const GIORNI = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
+
+const STATIC_COURSES = [
+  {
+    title: "Vinyasa Foundations",
+    giorno: "Martedì",
+    time: "19:30 / 20:30",
+    desc: "Una pratica fluida e accessibile, pensata per ritrovare le fondamenta del movimento. L’attenzione agli allineamenti rende questa lezione preziosa per costruire una base solida e consapevole.",
+    btn: "Prenota Martedì"
+  },
+  {
+    title: "Katonah Yoga Inspired",
+    giorno: "Mercoledì",
+    time: "19:00 / 20:00",
+    desc: "Una pratica dinamica che unisce geometria, respiro e immaginazione, ispirata al Katonah Yoga. Integra la fluidità del Vinyasa, la struttura dell’Ashtanga e i principi del taoismo.",
+    btn: "Prenota Mercoledì"
+  },
+  {
+    title: "Vinyasa Expansion",
+    giorno: "Giovedì",
+    time: "19:00 — 20:00",
+    desc: "Una pratica dinamica e creativa che riprende e sviluppa il lavoro del martedì. Aperta a tutti i livelli, pensata per chi desidera esplorare il movimento con curiosità e apertura.",
+    btn: "Prenota Giovedì"
+  }
+];
 
 export default function Courses() {
   const { preLancio } = useSiteSettings();
   const { user } = useAuth();
+  const [courses, setCourses] = useState(STATIC_COURSES);
 
   const ctaHref = preLancio ? '#register' : user ? '/dashboard/bookings' : '#pricing';
   const ctaLabel = (btn: string) => preLancio ? btn : user ? 'Prenota lezione' : 'Abbonati';
+
+  useEffect(() => {
+    supabase.from('courses').select('*').eq('is_attivo', true).order('giorno_settimana').then(({ data }) => {
+      if (!data) return;
+      setCourses(STATIC_COURSES.map(sc => {
+        const match = data.find(c => c.nome === sc.title) || data.find(c => GIORNI[c.giorno_settimana] === sc.giorno);
+        if (!match) return sc;
+        return {
+          ...sc,
+          giorno: GIORNI[match.giorno_settimana],
+          time: `${match.ora_inizio.slice(0, 5)} / ${match.ora_fine.slice(0, 5)}`,
+          desc: match.descrizione || sc.desc,
+          btn: `Prenota ${GIORNI[match.giorno_settimana]}`
+        };
+      }));
+    });
+  }, []);
 
   return (
     <section className="py-32 bg-surface-container-low overflow-hidden" id="courses">
@@ -28,26 +74,7 @@ export default function Courses() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          {[
-              {
-                title: "Vinyasa Foundations",
-                time: "Martedì • 19:30 / 20:30",
-                desc: "Una pratica fluida e accessibile, pensata per ritrovare le fondamenta del movimento. L’attenzione agli allineamenti rende questa lezione preziosa per costruire una base solida e consapevole.",
-                btn: "Prenota Martedì"
-              },
-              {
-                title: "Katonah Yoga Inspired",
-                time: "Mercoledì • 19:00 / 20:00",
-                desc: "Una pratica dinamica che unisce geometria, respiro e immaginazione, ispirata al Katonah Yoga. Integra la fluidità del Vinyasa, la struttura dell’Ashtanga e i principi del taoismo.",
-                btn: "Prenota Mercoledì"
-              },
-            {
-              title: "Vinyasa Expansion",
-              time: "Giovedì • 19:00 — 20:00",
-              desc: "Una pratica dinamica e creativa che riprende e sviluppa il lavoro del martedì. Aperta a tutti i livelli, pensata per chi desidera esplorare il movimento con curiosità e apertura.",
-              btn: "Prenota Giovedì"
-            }
-          ].map((course, i) => (
+          {courses.map((course, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, y: 50, scale: 0.95 }}
@@ -71,7 +98,7 @@ export default function Courses() {
                       whileHover={{ scale: 1.05 }}
                       className="text-primary font-label tracking-wider text-[10px] md:text-xs uppercase px-3 py-1 bg-primary/10 rounded-full inline-block"
                     >
-                      {course.time}
+                      {course.giorno} • {course.time}
                     </motion.span>
                   </div>
                 </div>
