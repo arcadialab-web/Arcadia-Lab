@@ -115,7 +115,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
-  const [kpis, setKpis] = useState({ abbonatiAttivi: 0, ricaviMese: 0, totaleUtenti: 0, tassoRinnovo: 0 });
+  const [kpis, setKpis] = useState({ abbonatiAttivi: 0, ricaviTotali: 0, totaleUtenti: 0, tassoRinnovo: 0 });
   const [planData, setPlanData]           = useState<{ name: string; value: number; color: string }[]>([]);
   const [attivita, setAttivita]           = useState<any[]>([]);
 
@@ -158,21 +158,19 @@ export default function AdminDashboard() {
 
   const load = async () => {
     setLoading(true);
-    const oggi = new Date();
-    const startMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1).toISOString();
 
     const [
       { count: abbonatiAttivi },
-      { data: ricaviMeseSubData },
-      { data: ricaviMeseTicketData },
+      { data: ricaviSubData },
+      { data: ricaviTicketData },
       { count: totaleUtenti },
       { count: totSub },
       { data: activeSubs },
       { data: recentSubs },
     ] = await Promise.all([
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }).eq('stato', 'attivo'),
-      supabase.from('subscriptions').select('prezzo_pagato').eq('is_test', false).gte('created_at', startMese),
-      supabase.from('event_tickets').select('prezzo_pagato').gte('created_at', startMese),
+      supabase.from('subscriptions').select('prezzo_pagato').eq('is_test', false),
+      supabase.from('event_tickets').select('prezzo_pagato'),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).neq('role', 'admin'),
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }),
       supabase.from('subscriptions').select('plans(nome)').eq('stato', 'attivo'),
@@ -181,8 +179,8 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false }).limit(6),
     ]);
 
-    const ricaviMese = (ricaviMeseSubData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0)
-      + (ricaviMeseTicketData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0);
+    const ricaviTotali = (ricaviSubData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0)
+      + (ricaviTicketData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0);
     const tassoRinnovo = totSub ? Math.round(((abbonatiAttivi || 0) / totSub) * 100) : 0;
 
     // Distribuzione piani
@@ -198,7 +196,7 @@ export default function AdminDashboard() {
       color: COLORS[i % COLORS.length],
     }));
 
-    setKpis({ abbonatiAttivi: abbonatiAttivi || 0, ricaviMese, totaleUtenti: totaleUtenti || 0, tassoRinnovo });
+    setKpis({ abbonatiAttivi: abbonatiAttivi || 0, ricaviTotali, totaleUtenti: totaleUtenti || 0, tassoRinnovo });
     setPlanData(planArr);
     setAttivita(recentSubs || []);
     setLoading(false);
@@ -209,7 +207,7 @@ export default function AdminDashboard() {
 
   const kpiCards = [
     { label: 'Abbonati attivi',  value: String(kpis.abbonatiAttivi),              icon: Users,         sub: 'abbonamenti in corso' },
-    { label: 'Ricavi questo mese', value: `€ ${kpis.ricaviMese.toLocaleString('it-IT')}`, icon: Euro, sub: 'mese corrente' },
+    { label: 'Ricavi totali', value: `€ ${kpis.ricaviTotali.toLocaleString('it-IT')}`, icon: Euro, sub: 'da sempre' },
     { label: 'Utenti registrati', value: String(kpis.totaleUtenti),              icon: CalendarCheck,  sub: 'totale iscritti' },
     { label: 'Tasso attività',   value: `${kpis.tassoRinnovo}%`,                 icon: TrendingUp,    sub: 'abbonamenti attivi / totale' },
   ];
