@@ -489,6 +489,7 @@ function UserDetailModal({ utente, onClose, onSaved }: { utente: any; onClose: (
   const [saveError, setSaveError] = useState('');
   const [iscrittoIl, setIscrittoIl]           = useState(toDateInput(utente.created_at));
   const [tesseraScadenza, setTesseraScadenza] = useState(toDateInput(utente.tessera_scadenza));
+  const [certScadenza, setCertScadenza]       = useState(toDateInput(utente.cert_medico_scadenza));
   const [subInizio, setSubInizio]             = useState(toDateInput(subAttuale?.data_inizio ?? null));
   const [subScadenza, setSubScadenza]         = useState(toDateInput(subAttuale?.data_scadenza ?? null));
   const [lezioniTotali, setLezioniTotali]     = useState(String(subAttuale?.lezioni_totali ?? 0));
@@ -499,8 +500,9 @@ function UserDetailModal({ utente, onClose, onSaved }: { utente: any; onClose: (
     setSaveError('');
     try {
       const { error: profErr } = await supabase.from('profiles').update({
-        created_at:       new Date(iscrittoIl).toISOString(),
-        tessera_scadenza: tesseraScadenza || null,
+        created_at:            new Date(iscrittoIl).toISOString(),
+        tessera_scadenza:      tesseraScadenza || null,
+        cert_medico_scadenza:  certScadenza || null,
       }).eq('id', utente.id);
       if (profErr) throw profErr;
 
@@ -648,7 +650,11 @@ function UserDetailModal({ utente, onClose, onSaved }: { utente: any; onClose: (
               label="Scadenza tessera"
               value={editing ? <input type="date" value={tesseraScadenza} onChange={e => setTesseraScadenza(e.target.value)} className={dateInputCls} /> : fmtData(utente.tessera_scadenza)}
             />
-            <InfoRow icon={<FileText size={16} strokeWidth={1.5} />} label="Scadenza certificato medico" value={fmtData(utente.cert_medico_scadenza)} />
+            <InfoRow
+              icon={<FileText size={16} strokeWidth={1.5} />}
+              label="Scadenza certificato medico"
+              value={editing ? <input type="date" value={certScadenza} onChange={e => setCertScadenza(e.target.value)} className={dateInputCls} /> : fmtData(utente.cert_medico_scadenza)}
+            />
           </div>
 
           {editing && (
