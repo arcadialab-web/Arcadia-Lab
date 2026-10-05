@@ -34,6 +34,8 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
   const [notifications, setNotifications] = useState({ emailLezioni: true, emailPromo: false, emailScadenza: true });
   const [requireCert, setRequireCert] = useState(true);
   const [certSaving, setCertSaving]   = useState(false);
+  const [mostraPosti, setMostraPosti] = useState(true);
+  const [mostraPostiSaving, setMostraPostiSaving] = useState(false);
   const [preLancio, setPreLancio]     = useState(false);
   const [preLancioSaving, setPreLancioSaving] = useState(false);
   const [abbonamentoOptions, setAbbonamentoOptions] = useState<AbbonamentoOption[]>(DEFAULT_ABBONAMENTO_OPTIONS);
@@ -46,12 +48,13 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
   useEffect(() => {
     if (!isAdmin) return;
     supabase.from('site_settings').select('key, value')
-      .in('key', ['require_medical_cert', 'pre_lancio', 'abbonamento_options', 'tessera_prezzo'])
+      .in('key', ['require_medical_cert', 'pre_lancio', 'abbonamento_options', 'tessera_prezzo', 'mostra_posti_disponibili'])
       .then(({ data }) => {
         if (!data) return;
         const map = Object.fromEntries(data.map(r => [r.key, r.value]));
-        if (map['require_medical_cert']) setRequireCert(map['require_medical_cert'] === 'true');
-        if (map['pre_lancio'])           setPreLancio(map['pre_lancio'] === 'true');
+        if (map['require_medical_cert'])       setRequireCert(map['require_medical_cert'] === 'true');
+        if (map['pre_lancio'])                 setPreLancio(map['pre_lancio'] === 'true');
+        if (map['mostra_posti_disponibili'])   setMostraPosti(map['mostra_posti_disponibili'] === 'true');
         if (map['abbonamento_options']) {
           try {
             const parsed = JSON.parse(map['abbonamento_options']);
@@ -74,6 +77,13 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
     await supabase.from('site_settings').upsert({ key: 'pre_lancio', value: String(val) }, { onConflict: 'key' });
     setPreLancio(val);
     setPreLancioSaving(false);
+  };
+
+  const saveMostraPosti = async (val: boolean) => {
+    setMostraPostiSaving(true);
+    await supabase.from('site_settings').upsert({ key: 'mostra_posti_disponibili', value: String(val) }, { onConflict: 'key' });
+    setMostraPosti(val);
+    setMostraPostiSaving(false);
   };
 
   const updateAbbonamentoOption = (index: number, field: keyof AbbonamentoOption, value: string) => {
@@ -314,6 +324,23 @@ export default function SettingsPanel({ isAdmin }: { isAdmin: boolean }) {
                 className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-all duration-300 disabled:opacity-60 ${requireCert ? 'bg-primary' : 'bg-outline'}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${requireCert ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+
+            <div className="flex items-start justify-between gap-4 py-2">
+              <div>
+                <p className="text-sm font-semibold text-on-surface">Mostra posti disponibili</p>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Se attivo, nella sezione prenotazioni l'utente vede quanti posti restano liberi per ogni lezione (senza il totale posti del corso).
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={mostraPostiSaving}
+                onClick={() => saveMostraPosti(!mostraPosti)}
+                className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-all duration-300 disabled:opacity-60 ${mostraPosti ? 'bg-primary' : 'bg-outline'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${mostraPosti ? 'translate-x-5' : ''}`} />
               </button>
             </div>
 

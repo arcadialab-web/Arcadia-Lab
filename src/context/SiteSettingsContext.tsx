@@ -28,16 +28,17 @@ interface SiteSettings {
   requireMedicalCert: boolean;
   abbonamentoOptions: AbbonamentoOption[];
   tesseraPrezzo: number;
+  mostraPostiDisponibili: boolean;
 }
 
-const SiteSettingsContext = createContext<SiteSettings>({ preLancio: false, requireMedicalCert: true, abbonamentoOptions: DEFAULT_ABBONAMENTO_OPTIONS, tesseraPrezzo: DEFAULT_TESSERA_PREZZO });
+const SiteSettingsContext = createContext<SiteSettings>({ preLancio: false, requireMedicalCert: true, abbonamentoOptions: DEFAULT_ABBONAMENTO_OPTIONS, tesseraPrezzo: DEFAULT_TESSERA_PREZZO, mostraPostiDisponibili: true });
 
 export function SiteSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<SiteSettings>({ preLancio: false, requireMedicalCert: true, abbonamentoOptions: DEFAULT_ABBONAMENTO_OPTIONS, tesseraPrezzo: DEFAULT_TESSERA_PREZZO });
+  const [settings, setSettings] = useState<SiteSettings>({ preLancio: false, requireMedicalCert: true, abbonamentoOptions: DEFAULT_ABBONAMENTO_OPTIONS, tesseraPrezzo: DEFAULT_TESSERA_PREZZO, mostraPostiDisponibili: true });
 
   useEffect(() => {
     supabase.from('site_settings').select('key, value')
-      .in('key', ['pre_lancio', 'require_medical_cert', 'abbonamento_options', 'tessera_prezzo'])
+      .in('key', ['pre_lancio', 'require_medical_cert', 'abbonamento_options', 'tessera_prezzo', 'mostra_posti_disponibili'])
       .then(({ data }) => {
         if (!data) return;
         const map = Object.fromEntries(data.map(r => [r.key, r.value]));
@@ -61,6 +62,7 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
           requireMedicalCert: map['require_medical_cert'] !== 'false',
           abbonamentoOptions,
           tesseraPrezzo,
+          mostraPostiDisponibili: map['mostra_posti_disponibili'] !== 'false',
         });
       });
   }, []);

@@ -1074,9 +1074,11 @@ function generateSlots(courses: any[], exceptions: any[], weeksAhead = 4, inizio
 
 function BookingsPanel() {
   const { user } = useAuth();
+  const { mostraPostiDisponibili } = useSiteSettings();
   const [courses, setCourses]         = useState<any[]>([]);
   const [exceptions, setExceptions]   = useState<any[]>([]);
   const [myBookings, setMyBookings]   = useState<any[]>([]);
+  const [postiPrenotati, setPostiPrenotati] = useState<Record<string, number>>({});
   const [sub, setSub]                 = useState<any>(null);
   const [unlocked, setUnlocked]       = useState(false);
   const [tesseraScadenza, setTesseraScadenza] = useState<string | null>(null);
@@ -1091,16 +1093,20 @@ function BookingsPanel() {
     setLoading(true);
     const [
       { data: c }, { data: ex }, { data: b },
-      { data: s }, { data: p },
+      { data: s }, { data: p }, { data: pp },
     ] = await Promise.all([
       supabase.from('courses').select('*').eq('is_attivo', true).order('giorno_settimana'),
       supabase.from('course_exceptions').select('*'),
       supabase.from('course_bookings').select('*').eq('user_id', user.id).eq('stato', 'confermata'),
       supabase.from('subscriptions').select('id, lezioni_totali, lezioni_usate, stato, data_inizio, plans(frequenza_sett)').eq('user_id', user.id).in('stato', ['attivo', 'in_attesa']).maybeSingle(),
       supabase.from('profiles').select('prenotazioni_sbloccate, tessera_scadenza').eq('id', user.id).single(),
+      mostraPostiDisponibili ? supabase.rpc('get_posti_prenotati') : Promise.resolve({ data: [] as any[] }),
     ]);
     setCourses(c || []);
     setExceptions(ex || []);
+    const postiMap: Record<string, number> = {};
+    (pp || []).forEach((r: any) => { postiMap[r.course_id + r.data] = Number(r.prenotati); });
+    setPostiPrenotati(postiMap);
     setMyBookings(b || []);
     setSub(s ?? null);
     setUnlocked(p?.prenotazioni_sbloccate ?? false);
@@ -1289,6 +1295,9 @@ function BookingsPanel() {
               const booked = myBookings.find(b => b.course_id === slot.course.id && b.data === slot.dateStr);
               const isLoading = booking === key;
               const frequenza: number | null = sub.plans?.frequenza_sett ?? null;
+              const postiRimasti = mostraPostiDisponibili && slot.course.posti_max != null
+                ? Math.max(0, slot.course.posti_max - (postiPrenotati[slot.course.id + slot.dateStr] || 0))
+                : null;
               let settimanapiena = false;
               if (frequenza && !booked) {
                 const slotDate = new Date(slot.dateStr + 'T12:00:00');
@@ -1310,6 +1319,11 @@ function BookingsPanel() {
                           {slot.date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}
                         </p>
                         <p className="text-xs text-on-surface-variant">{slot.course.ora_inizio.slice(0,5)}–{slot.course.ora_fine.slice(0,5)}</p>
+                        {postiRimasti !== null && (
+                          <p className={`text-[10px] mt-0.5 font-bold ${postiRimasti === 0 ? 'text-red-500' : postiRimasti <= 3 ? 'text-amber-600' : 'text-on-surface-variant'}`}>
+                            {postiRimasti === 0 ? 'Al completo' : `${postiRimasti} post${postiRimasti === 1 ? 'o' : 'i'} disponibil${postiRimasti === 1 ? 'e' : 'i'}`}
+                          </p>
+                        )}
                         {settimanapiena && <p className="text-[10px] text-primary/70 mt-0.5 font-bold">Limite settimana raggiunto</p>}
                       </div>
                     </div>
