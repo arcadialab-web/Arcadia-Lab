@@ -1,16 +1,20 @@
-import { motion } from 'motion/react';
-import { CheckCircle2, AlertCircle, Clock, Search, RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { createPortal } from 'react-dom';
+import { CheckCircle2, AlertCircle, Clock, Search, RefreshCw, X, History } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 
 interface Abbonamento {
   id: string;
+  user_id: string;
   stato: string;
   lezioni_totali: number;
   lezioni_usate: number;
+  data_inizio: string | null;
   data_scadenza: string;
   prezzo_pagato: number | null;
   is_test: boolean;
+  created_at: string;
   plans: { nome: string } | null;
   profiles: { nome: string | null; cognome: string | null; email: string | null; stripe_customer_id: string | null } | null;
   user_email: string;
@@ -41,12 +45,70 @@ function getNome(row: Abbonamento) {
   return row.user_email;
 }
 
+function StoricoModal({ nome, email, storico, onClose }: {
+  nome: string; email: string; storico: Abbonamento[]; onClose: () => void;
+}) {
+  const ordinati = [...storico].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const rinnovi = Math.max(0, storico.length - 1);
+
+  return createPortal(
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96 }} transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+        className="bg-white w-full max-w-lg mx-auto rounded-3xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
+      >
+        <div className="px-6 pt-6 pb-4 border-b border-outline-variant/10 flex items-start justify-between flex-shrink-0">
+          <div>
+            <p className="text-[10px] font-label uppercase tracking-[0.25em] text-primary mb-1">Storico abbonamenti</p>
+            <h3 className="font-serif text-lg text-on-surface">{nome}</h3>
+            <p className="text-xs text-on-surface-variant">{email}</p>
+            <span className="inline-flex items-center gap-1 mt-2 text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-primary/10 text-primary">
+              <History size={11} strokeWidth={2} /> {rinnovi} rinnov{rinnovi === 1 ? 'o' : 'i'}
+            </span>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant flex-shrink-0">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-2.5 overflow-y-auto">
+          {ordinati.map(a => {
+            const cfg = statoConfig[getStato(a)] ?? statoConfig.scaduto;
+            return (
+              <div key={a.id} className="p-4 bg-surface rounded-2xl border border-outline-variant/20">
+                <div className="flex items-center justify-between gap-3 mb-1.5">
+                  <p className="text-sm font-bold text-on-surface truncate">{a.plans?.nome ?? 'Piano'}</p>
+                  <span className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: cfg.bg, color: cfg.color }}>
+                    <cfg.icon size={10} strokeWidth={2} />
+                    {cfg.label}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-on-surface-variant">
+                  <span>Inizio: <strong className="text-on-surface">{a.data_inizio ? new Date(a.data_inizio).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</strong></span>
+                  <span>Scadenza: <strong className="text-on-surface">{new Date(a.data_scadenza).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}</strong></span>
+                  <span>Lezioni: <strong className="text-on-surface">{a.lezioni_usate}/{a.lezioni_totali}</strong></span>
+                  <span>Pagato: <strong className="text-on-surface">{a.prezzo_pagato != null ? `€ ${Number(a.prezzo_pagato).toLocaleString('it-IT')}` : '—'}</strong></span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </motion.div>
+    </motion.div>,
+    document.body
+  );
+}
+
 export default function SubscriptionsPanel() {
   const [abbonamenti, setAbbonamenti] = useState<Abbonamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filtro, setFiltro] = useState<'tutti' | 'attivo' | 'scaduto' | 'in-scadenza'>('tutti');
   const [error, setError] = useState<string | null>(null);
+  const [storicoUtente, setStoricoUtente] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -56,8 +118,8 @@ export default function SubscriptionsPanel() {
     const { data, error: dbError } = await supabase
       .from('subscriptions')
       .select(`
-        id, stato, lezioni_totali, lezioni_usate,
-        data_scadenza, prezzo_pagato, is_test,
+        id, user_id, stato, lezioni_totali, lezioni_usate,
+        data_inizio, data_scadenza, prezzo_pagato, is_test, created_at,
         plans ( nome ),
         profiles ( nome, cognome, email, stripe_customer_id )
       `)
@@ -69,8 +131,6 @@ export default function SubscriptionsPanel() {
       return;
     }
 
-    // Per ogni subscription recupera l'email dall'auth tramite user_id
-    // (profiles.id = auth.users.id quindi usiamo una query separata)
     const enriched: Abbonamento[] = (data ?? []).map((row: any) => ({
       ...row,
       user_email: row.profiles?.email ?? row.profiles?.stripe_customer_id ?? '—',
@@ -82,7 +142,21 @@ export default function SubscriptionsPanel() {
 
   useEffect(() => { load(); }, []);
 
-  const computed = abbonamenti.map(a => ({ ...a, statoCalcolato: getStato(a) }));
+  // Raggruppa per utente: mostra solo l'abbonamento attuale (attivo/in_attesa, altrimenti il più recente)
+  const perUtente = new Map<string, Abbonamento[]>();
+  abbonamenti.forEach(a => {
+    const list = perUtente.get(a.user_id) ?? [];
+    list.push(a);
+    perUtente.set(a.user_id, list);
+  });
+
+  const attuali: (Abbonamento & { rinnovi: number })[] = Array.from(perUtente.values()).map(storico => {
+    const ordinati = [...storico].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const attuale = ordinati.find(a => a.stato === 'attivo' || a.stato === 'in_attesa') ?? ordinati[0];
+    return { ...attuale, rinnovi: Math.max(0, storico.length - 1) };
+  });
+
+  const computed = attuali.map(a => ({ ...a, statoCalcolato: getStato(a) }));
 
   const filtered = computed.filter(a => {
     const nome = getNome(a).toLowerCase();
@@ -97,6 +171,9 @@ export default function SubscriptionsPanel() {
     'in-scadenza': computed.filter(a => a.statoCalcolato === 'in-scadenza').length,
     scaduto:       computed.filter(a => a.statoCalcolato === 'scaduto').length,
   };
+
+  const storicoAperto = storicoUtente ? perUtente.get(storicoUtente) ?? [] : [];
+  const utenteAperto = storicoAperto[0];
 
   return (
     <div className="space-y-5">
@@ -159,7 +236,7 @@ export default function SubscriptionsPanel() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-outline-variant/20">
-                  {['Utente', 'Piano', 'Lezioni', 'Scadenza', 'Stato'].map(h => (
+                  {['Utente', 'Piano', 'Lezioni', 'Scadenza', 'Rinnovi', 'Stato'].map(h => (
                     <th key={h} className="text-left px-5 py-4 text-[10px] font-label uppercase tracking-widest text-on-surface-variant">{h}</th>
                   ))}
                 </tr>
@@ -174,11 +251,12 @@ export default function SubscriptionsPanel() {
 
                   return (
                     <motion.tr
-                      key={a.id}
+                      key={a.user_id}
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.04 }}
-                      className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container transition-colors"
+                      onClick={() => setStoricoUtente(a.user_id)}
+                      className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container transition-colors cursor-pointer"
                     >
                       {/* Utente */}
                       <td className="px-5 py-4">
@@ -220,6 +298,15 @@ export default function SubscriptionsPanel() {
                         {new Date(a.data_scadenza).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
 
+                      {/* Rinnovi */}
+                      <td className="px-5 py-4 text-sm text-on-surface-variant whitespace-nowrap">
+                        {a.rinnovi > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-primary font-bold">
+                            <History size={12} strokeWidth={2} /> {a.rinnovi}
+                          </span>
+                        ) : '—'}
+                      </td>
+
                       {/* Stato */}
                       <td className="px-5 py-4">
                         <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full w-fit" style={{ background: cfg.bg, color: cfg.color }}>
@@ -243,6 +330,17 @@ export default function SubscriptionsPanel() {
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {storicoUtente && utenteAperto && (
+          <StoricoModal
+            nome={getNome(utenteAperto)}
+            email={utenteAperto.user_email}
+            storico={storicoAperto}
+            onClose={() => setStoricoUtente(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
