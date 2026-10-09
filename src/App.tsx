@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Home from './pages/Home';
 import WorkshopsPage from './pages/WorkshopsPage';
 import Auth from './pages/Auth';
@@ -84,6 +84,25 @@ function LiveTracker() {
   return null;
 }
 
+// ── Se il link di recupero password atterra fuori da /auth
+// (es. configurazione redirect URL mancante lato Supabase),
+// reindirizza comunque l'utente lì invece di lasciarlo bloccato.
+function RecoveryRedirect() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY' && location.pathname !== '/auth') {
+        navigate('/auth', { replace: true });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [location.pathname, navigate]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -91,6 +110,7 @@ export default function App() {
       <Router>
         <PageTracker />
         <LiveTracker />
+        <RecoveryRedirect />
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<Home />} />

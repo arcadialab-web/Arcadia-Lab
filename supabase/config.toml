@@ -8,3 +8,36 @@ project_id = "fnvchbtcytugkrtnrvyj"
 # 22/09/2026, causa di un pagamento non processato).
 [functions.stripe-webhook]
 verify_jwt = false
+
+[auth]
+additional_redirect_urls = [
+  "https://www.arcadialab.it/auth",
+  "https://arcadialab.it/auth",
+  "https://arcadia-lab-saas.vercel.app/auth",
+]
+site_url = "https://www.arcadialab.it"
+
+[auth.email]
+max_frequency = "1m0s"
+otp_length = 8
+
+[auth.rate_limit]
+email_sent = 30
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[db.pooler]
+default_pool_size = 15
+max_client_conn = 200
+
+[storage.analytics]
+enabled = true
+max_namespaces = 10
+
+[storage.image_transformation]
+enabled = true
+
+[storage.vector]
+enabled = false
