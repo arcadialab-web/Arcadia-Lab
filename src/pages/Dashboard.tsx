@@ -1307,8 +1307,9 @@ function BookingsPanel() {
                 const domStr = new Date(lun.getTime() + 6 * 86400000).toISOString().split('T')[0];
                 settimanapiena = myBookings.filter(b => b.data >= lunStr && b.data <= domStr).length >= frequenza;
               }
+              const lezionePiena = postiRimasti === 0;
               return (
-                <div key={key} className={`p-4 rounded-2xl border transition-all ${booked ? 'bg-green-50 border-green-200' : settimanapiena ? 'bg-surface-container-low border-outline-variant/20 opacity-60' : 'bg-surface border-outline-variant/20 hover:border-primary/30'}`}>
+                <div key={key} className={`p-4 rounded-2xl border transition-all ${booked ? 'bg-green-50 border-green-200' : lezionePiena ? 'bg-surface-container-low border-outline-variant/20 opacity-60' : settimanapiena ? 'bg-amber-50 border-amber-200' : 'bg-surface border-outline-variant/20 hover:border-primary/30'}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
                       <div className="w-3 h-3 rounded-full mt-1 flex-shrink-0" style={{ background: slot.course.colore }} />
@@ -1320,11 +1321,13 @@ function BookingsPanel() {
                         </p>
                         <p className="text-xs text-on-surface-variant">{slot.course.ora_inizio.slice(0,5)}–{slot.course.ora_fine.slice(0,5)}</p>
                         {postiRimasti !== null && (
-                          <p className={`text-[10px] mt-0.5 font-bold ${postiRimasti === 0 ? 'text-red-500' : postiRimasti <= 3 ? 'text-amber-600' : 'text-on-surface-variant'}`}>
-                            {postiRimasti === 0 ? 'Al completo' : `${postiRimasti} post${postiRimasti === 1 ? 'o' : 'i'} disponibil${postiRimasti === 1 ? 'e' : 'i'}`}
+                          <p className={`text-[10px] mt-0.5 font-bold ${lezionePiena ? 'text-red-500' : postiRimasti <= 3 ? 'text-amber-600' : 'text-on-surface-variant'}`}>
+                            {lezionePiena ? 'Lezione al completo' : `${postiRimasti} post${postiRimasti === 1 ? 'o' : 'i'} disponibil${postiRimasti === 1 ? 'e' : 'i'}`}
                           </p>
                         )}
-                        {settimanapiena && <p className="text-[10px] text-primary/70 mt-0.5 font-bold">Limite settimana raggiunto</p>}
+                        {settimanapiena && !lezionePiena && (
+                          <p className="text-[10px] text-amber-700 mt-0.5 font-bold">Hai già prenotato questa settimana — la lezione resta disponibile per gli altri</p>
+                        )}
                       </div>
                     </div>
                     <div className="flex-shrink-0">
@@ -1346,7 +1349,7 @@ function BookingsPanel() {
                       })() : (
                         <button onClick={() => prenota(slot)} disabled={isLoading || lezioniRimaste <= 0 || settimanapiena}
                           className="text-xs font-bold px-3 py-2 rounded-2xl bg-primary text-white hover:bg-opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
-                          {isLoading ? '...' : lezioniRimaste <= 0 ? 'Esaurite' : settimanapiena ? 'Limite' : 'Prenota'}
+                          {isLoading ? '...' : lezioniRimaste <= 0 ? 'Esaurite' : lezionePiena ? 'Al completo' : settimanapiena ? 'Limite settimanale' : 'Prenota'}
                         </button>
                       )}
                     </div>
