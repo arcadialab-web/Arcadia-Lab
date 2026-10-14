@@ -7,7 +7,7 @@ import {
   LayoutDashboard, BarChart2, CreditCard, Users,
   Settings, CalendarCheck, BookOpen, Star, PackagePlus,
   CheckCircle2, XCircle, Lock, Mail, AlertCircle, Inbox,
-  Phone, Award, FileText, Calendar, UserPlus, Euro,
+  Phone, Award, FileText, Calendar, UserPlus, Euro, Search,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
@@ -153,6 +153,7 @@ function UsersPanel() {
   const [unlockTarget, setUnlockTarget] = useState<any>(null);
   const [detailTarget, setDetailTarget] = useState<any>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [search, setSearch] = useState('');
 
   const load = () => {
     supabase
@@ -171,15 +172,35 @@ function UsersPanel() {
 
   if (loading) return <div className="text-center py-16 font-serif italic text-on-surface-variant">Caricamento utenti...</div>;
 
+  const searchLower = search.trim().toLowerCase();
+  const utentiFiltrati = searchLower === '' ? utenti : utenti.filter(u => {
+    const campi = [
+      u.nome, u.cognome, u.email, u.telefono,
+      u.role === 'admin' ? 'admin' : 'utente',
+      ...(u.subscriptions ?? []).map((s: any) => s.plans?.nome),
+    ];
+    return campi.some(c => c && String(c).toLowerCase().includes(searchLower));
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-800">
         <Lock size={14} className="flex-shrink-0 mt-0.5 text-blue-600" strokeWidth={1.5} />
         <p>Clicca su <strong>"Sblocca"</strong> per abilitare le prenotazioni dopo aver ricevuto il certificato medico. Puoi inserire la data di scadenza del certificato per blocco automatico.</p>
       </div>
-      <div className="flex justify-end">
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div className="relative flex-1 max-w-sm">
+          <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" strokeWidth={1.5} />
+          <input
+            type="text"
+            placeholder="Cerca per nome, email, telefono, piano..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full bg-surface-container-low border border-outline-variant/40 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+          />
+        </div>
         <button onClick={() => setAddOpen(true)}
-          className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-4 py-2.5 rounded-full bg-primary text-on-primary hover:opacity-90 transition-opacity"
+          className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-4 py-2.5 rounded-full bg-primary text-on-primary hover:opacity-90 transition-opacity flex-shrink-0"
         >
           <UserPlus size={14} strokeWidth={2} /> Aggiungi utente
         </button>
@@ -195,9 +216,9 @@ function UsersPanel() {
               </tr>
             </thead>
             <tbody>
-              {utenti.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-12 font-serif italic text-on-surface-variant">Nessun utente registrato</td></tr>
-              ) : utenti.map((u) => {
+              {utentiFiltrati.length === 0 ? (
+                <tr><td colSpan={7} className="text-center py-12 font-serif italic text-on-surface-variant">{utenti.length === 0 ? 'Nessun utente registrato' : 'Nessun risultato trovato'}</td></tr>
+              ) : utentiFiltrati.map((u) => {
                 const displayName = u.nome ? `${u.nome} ${u.cognome || ''}`.trim() : (u.email ?? 'Utente');
                 const isAdmin = u.role === 'admin';
                 const subAttivo = (u.subscriptions ?? []).find((s: any) => s.stato === 'attivo' || s.stato === 'in_attesa');
