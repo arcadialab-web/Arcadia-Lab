@@ -712,39 +712,45 @@ function UserDetailModal({ utente, onClose, onSaved }: { utente: any; onClose: (
     >
       <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96 }} transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-        className="bg-white w-full max-w-lg mx-auto rounded-3xl shadow-2xl overflow-hidden max-h-[88vh] flex flex-col"
+        className="bg-white w-full max-w-2xl mx-auto rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
       >
-        <div className="px-6 pt-6 pb-4 border-b border-outline-variant/10 flex items-start justify-between flex-shrink-0">
-          <div className="flex items-center gap-4 min-w-0">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-base font-bold text-primary flex-shrink-0">
-              {displayName.charAt(0).toUpperCase()}
+        <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-outline-variant/15 flex-shrink-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-xl font-serif text-primary flex-shrink-0">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-label uppercase tracking-[0.2em] text-primary mb-1">Dettagli utente</p>
+                <h3 className="font-serif text-2xl leading-tight text-on-surface break-words">{displayName}</h3>
+                <span className="inline-block mt-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full" style={{
+                  background: isAdmin ? 'rgba(181,106,86,0.12)' : 'rgba(139,168,136,0.15)',
+                  color:      isAdmin ? '#b56a56' : '#8ba888',
+                }}>
+                  {isAdmin ? 'Admin' : 'Utente'}
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-label uppercase tracking-[0.25em] text-primary mb-1">Dettagli utente</p>
-              <h3 className="font-serif text-lg text-on-surface truncate">{displayName}</h3>
-              <span className="inline-block mt-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full" style={{
-                background: isAdmin ? 'rgba(181,106,86,0.12)' : 'rgba(139,168,136,0.15)',
-                color:      isAdmin ? '#b56a56' : '#8ba888',
-              }}>
-                {isAdmin ? 'Admin' : 'Utente'}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {!isAdmin && !editing && (
-              <>
-                <button onClick={() => setShowRinnovo(true)} className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold uppercase tracking-widest bg-primary/10 text-primary hover:bg-primary/15 transition-colors">
-                  <Euro size={13} strokeWidth={2} /> Registra rinnovo
-                </button>
-                <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold uppercase tracking-widest bg-primary/10 text-primary hover:bg-primary/15 transition-colors">
-                  <Pencil size={13} strokeWidth={2} /> Modifica
-                </button>
-              </>
-            )}
-            <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant flex-shrink-0">
-              <X size={18} />
+            <button onClick={onClose} aria-label="Chiudi" className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors flex-shrink-0">
+              <X size={20} />
             </button>
           </div>
+
+          {!isAdmin && !editing && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-5">
+              <button onClick={() => setShowRinnovo(true)} className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold bg-primary text-on-primary hover:opacity-90 transition-opacity shadow-sm">
+                <Euro size={16} strokeWidth={2} /> Registra rinnovo
+              </button>
+              <button onClick={() => setEditing(true)} className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors">
+                <Pencil size={16} strokeWidth={2} /> Modifica dati
+              </button>
+            </div>
+          )}
+          {editing && (
+            <div className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
+              <Pencil size={13} strokeWidth={2} /> Modalità modifica attiva — salva o annulla in fondo alla scheda
+            </div>
+          )}
         </div>
 
         <AnimatePresence>
@@ -757,7 +763,7 @@ function UserDetailModal({ utente, onClose, onSaved }: { utente: any; onClose: (
           )}
         </AnimatePresence>
 
-        <div className="px-6 py-5 space-y-3 overflow-y-auto">
+        <div className="px-6 sm:px-8 py-6 space-y-3 overflow-y-auto">
           <div className="grid sm:grid-cols-2 gap-3">
             <InfoRow icon={<Mail size={16} strokeWidth={1.5} />} label="Email" value={utente.email ?? '—'} />
             <InfoRow icon={<Phone size={16} strokeWidth={1.5} />} label="Telefono" value={utente.telefono ?? '—'} />
