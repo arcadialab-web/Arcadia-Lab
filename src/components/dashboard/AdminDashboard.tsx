@@ -17,6 +17,7 @@ const card   = 'bg-surface-container-low border border-outline-variant/30 rounde
 const FILTRI_KEY = 'admin_incassi_filtri';
 
 type TipoIncasso   = 'tutto' | 'abbonamenti' | 'eventi';
+type MetodoIncasso = 'tutti' | 'stripe' | 'manuale';
 type PeriodoIncasso = 'oggi' | 'ieri' | 'settimana' | 'mese' | 'mese_scorso' | 'personalizzato';
 
 const TIPO_OPZIONI: { id: TipoIncasso; label: string }[] = [
@@ -24,6 +25,15 @@ const TIPO_OPZIONI: { id: TipoIncasso; label: string }[] = [
   { id: 'abbonamenti',  label: 'Abbonamenti' },
   { id: 'eventi',       label: 'Eventi speciali' },
 ];
+
+const METODO_OPZIONI: { id: MetodoIncasso; label: string }[] = [
+  { id: 'tutti',   label: 'Tutti i metodi' },
+  { id: 'stripe',  label: 'Online (Stripe)' },
+  { id: 'manuale', label: 'Contanti / manuale' },
+];
+
+// I pagamenti registrati dall'admin hanno stripe_payment_id "manual_<uuid>"; quelli Stripe hanno l'ID reale.
+const isManuale = (stripePaymentId: string | null) => !stripePaymentId || stripePaymentId.startsWith('manual_');
 
 const PERIODO_OPZIONI: { id: PeriodoIncasso; label: string }[] = [
   { id: 'oggi',           label: 'Oggi' },
@@ -123,38 +133,48 @@ export default function AdminDashboard() {
     try { return JSON.parse(localStorage.getItem(FILTRI_KEY) || '{}'); } catch { return {}; }
   })();
   const [filtroTipo, setFiltroTipo]       = useState<TipoIncasso>(filtriSalvati.tipo ?? 'tutto');
+  const [filtroMetodo, setFiltroMetodo]   = useState<MetodoIncasso>(filtriSalvati.metodo ?? 'tutti');
   const [filtroPeriodo, setFiltroPeriodo] = useState<PeriodoIncasso>(filtriSalvati.periodo ?? 'mese');
   const [customStart, setCustomStart]     = useState<string>(filtriSalvati.customStart ?? '');
   const [customEnd, setCustomEnd]         = useState<string>(filtriSalvati.customEnd ?? '');
   const [loadingIncassi, setLoadingIncassi] = useState(true);
-  const [incassi, setIncassi] = useState({ totale: 0, abbonamenti: 0, eventi: 0 });
+  const [incassi, setIncassi] = useState({ totale: 0, abbonamenti: 0, eventi: 0, stripe: 0, manuale: 0 });
   const [incassiSerie, setIncassiSerie] = useState<{ label: string; ricavi: number }[]>([]);
 
   useEffect(() => {
-    localStorage.setItem(FILTRI_KEY, JSON.stringify({ tipo: filtroTipo, periodo: filtroPeriodo, customStart, customEnd }));
-  }, [filtroTipo, filtroPeriodo, customStart, customEnd]);
+    localStorage.setItem(FILTRI_KEY, JSON.stringify({ tipo: filtroTipo, metodo: filtroMetodo, periodo: filtroPeriodo, customStart, customEnd }));
+  }, [filtroTipo, filtroMetodo, filtroPeriodo, customStart, customEnd]);
 
   const loadIncassi = async () => {
     setLoadingIncassi(true);
     const [start, end] = rangeIncassi(filtroPeriodo, customStart, customEnd);
     const [{ data: subsData }, { data: ticketsData }] = await Promise.all([
-      supabase.from('subscriptions').select('prezzo_pagato, created_at').eq('is_test', false).gte('created_at', start.toISOString()).lt('created_at', end.toISOString()),
-      supabase.from('event_tickets').select('prezzo_pagato, created_at').gte('created_at', start.toISOString()).lt('created_at', end.toISOString()),
+      supabase.from('subscriptions').select('prezzo_pagato, created_at, stripe_payment_id').eq('is_test', false).gte('created_at', start.toISOString()).lt('created_at', end.toISOString()),
+      supabase.from('event_tickets').select('prezzo_pagato, created_at, stripe_payment_id').gte('created_at', start.toISOString()).lt('created_at', end.toISOString()),
     ]);
-    const abbonamenti = subsData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0;
-    const eventi      = ticketsData?.reduce((s, r) => s + (r.prezzo_pagato || 0), 0) || 0;
-    const totale = filtroTipo === 'abbonamenti' ? abbonamenti : filtroTipo === 'eventi' ? eventi : abbonamenti + eventi;
 
-    const righe = filtroTipo === 'abbonamenti' ? (subsData || [])
-      : filtroTipo === 'eventi' ? (ticketsData || [])
-      : [...(subsData || []), ...(ticketsData || [])];
+    const perMetodo = <R extends { stripe_payment_id: string | null }>(rows: R[] | null) => (rows || []).filter(r =>
+      filtroMetodo === 'tutti' || (filtroMetodo === 'manuale') === isManuale(r.stripe_payment_id));
+    const somma = (rows: { prezzo_pagato: number | null }[]) => rows.reduce((s, r) => s + (r.prezzo_pagato || 0), 0);
 
-    setIncassi({ totale, abbonamenti, eventi });
+    const subs    = perMetodo(subsData);
+    const tickets = perMetodo(ticketsData);
+    const righe = filtroTipo === 'abbonamenti' ? subs
+      : filtroTipo === 'eventi' ? tickets
+      : [...subs, ...tickets];
+
+    setIncassi({
+      totale:      somma(righe),
+      abbonamenti: somma(subs),
+      eventi:      somma(tickets),
+      stripe:      somma(righe.filter(r => !isManuale(r.stripe_payment_id))),
+      manuale:     somma(righe.filter(r => isManuale(r.stripe_payment_id))),
+    });
     setIncassiSerie(serieIncassi(righe, start, end));
     setLoadingIncassi(false);
   };
 
-  useEffect(() => { loadIncassi(); }, [filtroTipo, filtroPeriodo, customStart, customEnd]);
+  useEffect(() => { loadIncassi(); }, [filtroTipo, filtroMetodo, filtroPeriodo, customStart, customEnd]);
 
   const load = async () => {
     setLoading(true);
@@ -271,6 +291,14 @@ export default function AdminDashboard() {
               </button>
             ))}
           </div>
+          <div className="flex flex-wrap gap-2">
+            {METODO_OPZIONI.map(o => (
+              <button key={o.id} onClick={() => setFiltroMetodo(o.id)}
+                className={`text-xs font-bold px-4 py-2 rounded-full transition-all ${filtroMetodo === o.id ? 'bg-on-surface text-surface' : 'bg-surface-container text-on-surface-variant hover:bg-primary/10 hover:text-primary'}`}>
+                {o.label}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
             {PERIODO_OPZIONI.map(o => (
               <button key={o.id} onClick={() => setFiltroPeriodo(o.id)}
@@ -295,8 +323,9 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        <div className="space-y-3 mb-6">
         {(filtroTipo === 'tutto') && (
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl p-4 bg-surface-container">
               <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-1">Abbonamenti</p>
               <p className="text-lg font-serif font-bold text-on-surface">€ {incassi.abbonamenti.toLocaleString('it-IT')}</p>
@@ -307,6 +336,20 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {(filtroMetodo === 'tutti') && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl p-4 bg-surface-container">
+              <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-1">Online (Stripe)</p>
+              <p className="text-lg font-serif font-bold text-on-surface">€ {incassi.stripe.toLocaleString('it-IT')}</p>
+            </div>
+            <div className="rounded-2xl p-4 bg-surface-container">
+              <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-1">Contanti / manuale</p>
+              <p className="text-lg font-serif font-bold text-on-surface">€ {incassi.manuale.toLocaleString('it-IT')}</p>
+            </div>
+          </div>
+        )}
+        </div>
 
         <div style={{ height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
