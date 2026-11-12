@@ -12,7 +12,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { supabase } from '../lib/supabase';
-import { dataRiferimentoRinnovo, notaDisdettaAltroAbbonamento } from '../lib/rinnovo';
+import { dataRiferimentoRinnovo, notaDisdettaAltroAbbonamento, isLezioneProva, abbonamentoInCorso, MSG_PROVA_NON_DISPONIBILE } from '../lib/rinnovo';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
 import AdminDashboard from '../components/dashboard/AdminDashboard';
 import UserDashboard from '../components/dashboard/UserDashboard';
@@ -1151,20 +1151,28 @@ function MyPlanPanel() {
             </p>
             <p className="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-2">Scegli il piano:</p>
             <div className="space-y-2">
-              {piani.map(p => (
-                <div key={p.id} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-outline-variant/20">
-                  <div>
-                    <p className="text-sm font-bold text-on-surface">{p.nome?.split('—')[1]?.trim() ?? p.nome}</p>
-                    <p className="text-xs text-on-surface-variant">{p.lezioni_totali} lezioni · {p.durata_giorni} giorni</p>
+              {piani.map(p => {
+                const provaBloccata = isLezioneProva(p) && abbonamentoInCorso(sub);
+                return (
+                <div key={p.id} className="bg-white rounded-xl px-4 py-3 border border-outline-variant/20">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-on-surface">{p.nome?.split('—')[1]?.trim() ?? p.nome}</p>
+                      <p className="text-xs text-on-surface-variant">{p.lezioni_totali} lezioni · {p.durata_giorni} giorni</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold text-on-surface">€ {p.prezzo.toFixed(0)}</span>
+                      {!provaBloccata && (
+                        <button onClick={() => setRenewPlan(p)} className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all">
+                          Rinnova
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-on-surface">€ {p.prezzo.toFixed(0)}</span>
-                    <button onClick={() => setRenewPlan(p)} className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all">
-                      Rinnova
-                    </button>
-                  </div>
+                  {provaBloccata && <p className="mt-2 text-xs text-amber-800">{MSG_PROVA_NON_DISPONIBILE}</p>}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -1211,20 +1219,28 @@ function MyPlanPanel() {
         <div>
           <p className="text-[10px] font-label uppercase tracking-[0.25em] text-on-surface-variant mb-3">Acquista un nuovo abbonamento</p>
           <div className="grid gap-3">
-            {piani.map(p => (
-              <div key={p.id} className="flex items-center justify-between p-4 bg-surface-container-low border border-outline-variant/30 rounded-2xl hover:border-primary/30 transition-all group">
-                <div>
-                  <p className="font-bold text-sm text-on-surface group-hover:text-primary transition-colors">{p.nome}</p>
-                  <p className="text-xs text-on-surface-variant mt-0.5">{p.lezioni_totali} lezioni · {p.durata_giorni} giorni</p>
+            {piani.map(p => {
+              const provaBloccata = isLezioneProva(p) && abbonamentoInCorso(sub);
+              return (
+              <div key={p.id} className="p-4 bg-surface-container-low border border-outline-variant/30 rounded-2xl hover:border-primary/30 transition-all group">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-sm text-on-surface group-hover:text-primary transition-colors">{p.nome}</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{p.lezioni_totali} lezioni · {p.durata_giorni} giorni</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <p className="font-serif font-bold text-on-surface">€ {p.prezzo.toFixed(0)}</p>
+                    {!provaBloccata && (
+                      <button onClick={() => setRenewPlan(p)} className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all">
+                        Acquista
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <p className="font-serif font-bold text-on-surface">€ {p.prezzo.toFixed(0)}</p>
-                  <button onClick={() => setRenewPlan(p)} className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-opacity-90 transition-all">
-                    Acquista
-                  </button>
-                </div>
+                {provaBloccata && <p className="mt-2 text-xs text-amber-800">{MSG_PROVA_NON_DISPONIBILE}</p>}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

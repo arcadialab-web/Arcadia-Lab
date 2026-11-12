@@ -18,6 +18,31 @@ export function dataRiferimentoRinnovo(sub: {
   return sub.data_scadenza;
 }
 
+// La lezione di prova è l'unico piano da una sola lezione.
+export const isLezioneProva = (plan: { lezioni_totali?: number | null } | null | undefined) =>
+  (plan?.lezioni_totali ?? 0) === 1;
+
+// Abbonamento ancora utilizzabile: in attesa di attivazione, oppure attivo, non scaduto e con lezioni rimaste.
+export function abbonamentoInCorso(sub: {
+  stato?: string | null;
+  data_scadenza?: string | null;
+  lezioni_totali?: number | null;
+  lezioni_usate?: number | null;
+} | null | undefined): boolean {
+  if (!sub) return false;
+  if (sub.stato === 'in_attesa') return true;
+  if (sub.stato !== 'attivo') return false;
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const oggi = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const nonScaduto = !sub.data_scadenza || sub.data_scadenza >= oggi;
+  const lezioniRimaste = (sub.lezioni_usate ?? 0) < (sub.lezioni_totali ?? 0);
+  return nonScaduto && lezioniRimaste;
+}
+
+export const MSG_PROVA_NON_DISPONIBILE =
+  'La lezione di prova è riservata a chi non ha un abbonamento in corso. Per regalarla a un amico o a un parente, chiedigli di registrarsi oppure contatta lo studio: arcadialabyoga@gmail.com';
+
 // Nota salvata sulla prenotazione quando la lezione disdetta apparteneva a un abbonamento
 // precedente: la lezione viene restituita sull'abbonamento attuale, così l'admin capisce il conteggio.
 export function notaDisdettaAltroAbbonamento(): string {

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { dataRiferimentoRinnovo } from '../lib/rinnovo';
+import { dataRiferimentoRinnovo, isLezioneProva, abbonamentoInCorso, MSG_PROVA_NON_DISPONIBILE } from '../lib/rinnovo';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -222,10 +222,39 @@ async function directCheckout(planId: string) {
   window.location.href = data.url;
 }
 
+// La lezione di prova non è acquistabile da chi ha già un abbonamento in corso.
+// In caso di errore nel controllo non si blocca nulla, per non impedire un acquisto legittimo.
+async function provaNonDisponibile(plan: Plan, userId: string): Promise<boolean> {
+  if (!isLezioneProva(plan)) return false;
+  try {
+    const { data: sub, error } = await supabase
+      .from('subscriptions')
+      .select('stato, data_scadenza, lezioni_totali, lezioni_usate')
+      .eq('user_id', userId)
+      .in('stato', ['attivo', 'in_attesa'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) return false;
+    return abbonamentoInCorso(sub);
+  } catch {
+    return false;
+  }
+}
+
+function AvvisoProva() {
+  return (
+    <p className="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
+      {MSG_PROVA_NON_DISPONIBILE}
+    </p>
+  );
+}
+
 // ── Riga piano con bottone individuale ───────────────────────
 function PlanRow({ plan }: { plan: Plan }) {
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading]     = useState(false);
+  const [bloccata, setBloccata]   = useState(false);
   const { preLancio } = useSiteSettings();
   const { user } = useAuth();
   const durataNome = plan.nome.split('—')[1]?.trim() ?? plan.nome;
@@ -234,6 +263,7 @@ function PlanRow({ plan }: { plan: Plan }) {
     if (preLancio) { window.location.href = '#register'; return; }
     if (user) {
       setLoading(true);
+      if (await provaNonDisponibile(plan, user.id)) { setBloccata(true); setLoading(false); return; }
       try { await directCheckout(plan.id); } catch { setLoading(false); }
       return;
     }
@@ -261,6 +291,7 @@ function PlanRow({ plan }: { plan: Plan }) {
           </motion.button>
         </div>
       </div>
+      {bloccata && <AvvisoProva />}
 
       <AnimatePresence>
         {showModal && <CheckoutModal plan={plan} onClose={() => setShowModal(false)} />}
@@ -273,6 +304,7 @@ function PlanRow({ plan }: { plan: Plan }) {
 function PlanButton({ plan, label = 'Inizia ora' }: { plan: Plan; label?: string }) {
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading]     = useState(false);
+  const [bloccata, setBloccata]   = useState(false);
   const { preLancio } = useSiteSettings();
   const { user } = useAuth();
 
@@ -280,6 +312,7 @@ function PlanButton({ plan, label = 'Inizia ora' }: { plan: Plan; label?: string
     if (preLancio) { window.location.href = '#register'; return; }
     if (user) {
       setLoading(true);
+      if (await provaNonDisponibile(plan, user.id)) { setBloccata(true); setLoading(false); return; }
       try { await directCheckout(plan.id); } catch { setLoading(false); }
       return;
     }
@@ -296,6 +329,7 @@ function PlanButton({ plan, label = 'Inizia ora' }: { plan: Plan; label?: string
       >
         {loading ? <><Loader2 size={14} className="animate-spin" /> Attendi...</> : label}
       </motion.button>
+      {bloccata && <AvvisoProva />}
 
       <AnimatePresence>
         {showModal && <CheckoutModal plan={plan} onClose={() => setShowModal(false)} />}
