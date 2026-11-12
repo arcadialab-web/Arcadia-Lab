@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { CalendarCheck, RefreshCw, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { notaDisdettaAltroAbbonamento } from '../../lib/rinnovo';
 import { useAuth } from '../../context/AuthContext';
 
 const GREEN = '#8ba888';
@@ -53,7 +54,11 @@ export default function MyLessonsPanel() {
       }
     }
     if (!confirm('Vuoi disdire questa prenotazione?')) return;
-    await supabase.from('course_bookings').update({ stato: 'cancellata' }).eq('id', bookingId);
+    const daAltroAbbonamento = !!booking?.subscription_id && booking.subscription_id !== sub.id;
+    await supabase.from('course_bookings').update({
+      stato: 'cancellata',
+      ...(daAltroAbbonamento ? { nota: notaDisdettaAltroAbbonamento() } : {}),
+    }).eq('id', bookingId);
     await supabase.rpc('decrement_lezioni_usate', { sub_id: sub.id });
     load();
   };

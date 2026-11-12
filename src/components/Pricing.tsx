@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { dataRiferimentoRinnovo } from '../lib/rinnovo';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -201,7 +202,7 @@ async function directCheckout(planId: string) {
     .single();
   const { data: sub } = await supabase
     .from('subscriptions')
-    .select('data_scadenza')
+    .select('data_scadenza, lezioni_totali, lezioni_usate')
     .in('stato', ['attivo', 'in_attesa'])
     .order('created_at', { ascending: false })
     .limit(1)
@@ -214,7 +215,7 @@ async function directCheckout(planId: string) {
       nome:          profile?.nome ?? '',
       cognome:       profile?.cognome ?? '',
       telefono:      profile?.telefono ?? '',
-      renewal_from:  sub?.data_scadenza ?? undefined,
+      renewal_from:  dataRiferimentoRinnovo(sub),
     },
   });
   if (error || !data?.url) throw new Error('Errore checkout');

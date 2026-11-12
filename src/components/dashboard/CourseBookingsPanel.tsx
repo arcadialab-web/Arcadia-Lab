@@ -6,6 +6,7 @@ interface Booking {
   id: string;
   data: string;
   stato: string;
+  nota: string | null;
   profiles: { nome: string | null; cognome: string | null; email: string } | null;
   courses: { nome: string } | null;
 }
@@ -19,6 +20,7 @@ const STATO_STYLE: Record<string, { row: string; badge: string; label: string }>
   confermata: { row: '', badge: 'bg-primary/10 text-primary', label: 'Confermata' },
   presente:   { row: 'bg-green-50', badge: 'bg-green-100 text-green-700', label: 'Presente' },
   assente:    { row: 'bg-red-50',   badge: 'bg-red-100 text-red-600',     label: 'Assente' },
+  cancellata: { row: 'opacity-70',  badge: 'bg-surface-container text-on-surface-variant', label: 'Disdetta' },
 };
 
 export default function CourseBookingsPanel() {
@@ -33,8 +35,9 @@ export default function CourseBookingsPanel() {
     setLoading(true);
     let q = supabase
       .from('course_bookings')
-      .select('id, data, stato, profiles(nome, cognome, email), courses(nome)')
-      .in('stato', ['confermata', 'presente', 'assente'])
+      .select('id, data, stato, nota, profiles(nome, cognome, email), courses(nome)')
+      // le disdette compaiono solo se hanno una nota (lezione restituita su un altro abbonamento)
+      .or('stato.in.(confermata,presente,assente),nota.not.is.null')
       .order('data', { ascending: false });
     if (from) q = q.gte('data', from);
     if (to)   q = q.lte('data', to);
@@ -62,10 +65,11 @@ export default function CourseBookingsPanel() {
   }
   grouped.sort((a, b) => b.bookings.length - a.bookings.length);
 
-  const totale      = bookings.length;
-  const presenti    = bookings.filter(b => b.stato === 'presente').length;
-  const corsiUnici  = grouped.length;
-  const utentiUnici = new Set(bookings.map(b => b.profiles?.email).filter(Boolean)).size;
+  const attive      = bookings.filter(b => b.stato !== 'cancellata');
+  const totale      = attive.length;
+  const presenti    = attive.filter(b => b.stato === 'presente').length;
+  const corsiUnici  = new Set(attive.map(b => b.courses?.nome ?? 'Corso sconosciuto')).size;
+  const utentiUnici = new Set(attive.map(b => b.profiles?.email).filter(Boolean)).size;
   const isFiltered  = dal || al;
 
   const inp = "bg-white border border-outline-variant/40 rounded-2xl px-3 py-2 text-sm text-on-surface focus:outline-none focus:border-primary transition-all w-full";
@@ -162,6 +166,7 @@ export default function CourseBookingsPanel() {
           {grouped.map(group => {
             const isOpen    = expanded === group.corso;
             const nPresenti = group.bookings.filter(b => b.stato === 'presente').length;
+            const nAttive   = group.bookings.filter(b => b.stato !== 'cancellata').length;
             return (
               <div key={group.corso} className="bg-surface-container-low border border-outline-variant/30 rounded-2xl overflow-hidden">
                 {/* Header gruppo */}
@@ -175,12 +180,12 @@ export default function CourseBookingsPanel() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-on-surface truncate">{group.corso}</p>
                     <p className="text-xs text-on-surface-variant mt-0.5">
-                      {group.bookings.length} prenotazion{group.bookings.length === 1 ? 'e' : 'i'}
+                      {nAttive} prenotazion{nAttive === 1 ? 'e' : 'i'}
                       {nPresenti > 0 && <span className="ml-1.5 text-green-600 font-bold">· {nPresenti} present{nPresenti === 1 ? 'e' : 'i'}</span>}
                     </p>
                   </div>
                   <span className="text-xs font-bold bg-primary/10 text-primary px-2.5 py-1 rounded-full flex-shrink-0">
-                    {group.bookings.length}
+                    {nAttive}
                   </span>
                   {isOpen ? <ChevronUp size={15} className="text-on-surface-variant flex-shrink-0" /> : <ChevronDown size={15} className="text-on-surface-variant flex-shrink-0" />}
                 </button>
@@ -205,8 +210,12 @@ export default function CourseBookingsPanel() {
                               </div>
                               <p className="text-xs text-on-surface-variant truncate mt-0.5">{b.profiles?.email}</p>
                               <p className="text-xs text-on-surface-variant mt-0.5">{data}</p>
+                              {b.nota && (
+                                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-1.5 mt-1.5">{b.nota}</p>
+                              )}
                             </div>
                             {/* Pulsanti presenza */}
+                            {b.stato !== 'cancellata' && (
                             <div className="flex flex-col gap-1.5 flex-shrink-0">
                               <button
                                 onClick={() => setStato(b.id, b.stato === 'presente' ? 'confermata' : 'presente')}
@@ -221,6 +230,7 @@ export default function CourseBookingsPanel() {
                                 <X size={11} /> Assente
                               </button>
                             </div>
+                            )}
                           </div>
                         </div>
                       );

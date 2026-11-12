@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { supabase } from '../lib/supabase';
+import { dataRiferimentoRinnovo, notaDisdettaAltroAbbonamento } from '../lib/rinnovo';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
 import AdminDashboard from '../components/dashboard/AdminDashboard';
 import UserDashboard from '../components/dashboard/UserDashboard';
@@ -644,6 +645,16 @@ function UserDetailModal({ utente, onClose, onSaved }: { utente: any; onClose: (
   const [saving, setSaving]   = useState(false);
   const [saveError, setSaveError] = useState('');
   const [showRinnovo, setShowRinnovo] = useState(false);
+  const [noteLezioni, setNoteLezioni] = useState<any[]>([]);
+
+  useEffect(() => {
+    supabase.from('course_bookings')
+      .select('id, data, nota, courses(nome)')
+      .eq('user_id', utente.id)
+      .not('nota', 'is', null)
+      .order('data', { ascending: false })
+      .then(({ data }) => setNoteLezioni(data || []));
+  }, [utente.id]);
   const [iscrittoIl, setIscrittoIl]           = useState(toDateInput(utente.created_at));
   const [tesseraScadenza, setTesseraScadenza] = useState(toDateInput(utente.tessera_scadenza));
   const [certScadenza, setCertScadenza]       = useState(toDateInput(utente.cert_medico_scadenza));
@@ -851,6 +862,22 @@ function UserDetailModal({ utente, onClose, onSaved }: { utente: any; onClose: (
                   {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                   Salva modifiche
                 </button>
+              </div>
+            </div>
+          )}
+
+          {noteLezioni.length > 0 && (
+            <div>
+              <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant mb-2 mt-2">Note sulle lezioni</p>
+              <div className="space-y-1.5">
+                {noteLezioni.map((n: any) => (
+                  <div key={n.id} className="px-3.5 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs">
+                    <p className="font-semibold text-amber-900">
+                      {n.courses?.nome ?? 'Lezione'} · {new Date(n.data + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                    <p className="text-amber-800 mt-0.5">{n.nota}</p>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -1206,7 +1233,7 @@ function MyPlanPanel() {
         {renewPlan && sub?.data_scadenza && (
           <RenewalModal
             plan={renewPlan}
-            renewalFrom={sub.data_scadenza}
+            renewalFrom={dataRiferimentoRinnovo(sub) ?? sub.data_scadenza}
             userEmail={user?.email ?? ''}
             tesseraGiorni={tesseraGiorni}
             onClose={() => setRenewPlan(null)}
@@ -1347,7 +1374,7 @@ function BookingsPanel() {
     if (existing) {
       ({ error } = await supabase
         .from('course_bookings')
-        .update({ stato: 'confermata', subscription_id: sub.id })
+        .update({ stato: 'confermata', subscription_id: sub.id, nota: null })
         .eq('id', existing.id));
     } else {
       ({ error } = await supabase.from('course_bookings').insert({
@@ -1373,7 +1400,12 @@ function BookingsPanel() {
     if (!cancelBooking) return;
     const { id, subId } = cancelBooking;
     setCancelBooking(null);
-    await supabase.from('course_bookings').update({ stato: 'cancellata' }).eq('id', id);
+    const prenotazione = myBookings.find(b => b.id === id);
+    const daAltroAbbonamento = !!prenotazione?.subscription_id && prenotazione.subscription_id !== subId;
+    await supabase.from('course_bookings').update({
+      stato: 'cancellata',
+      ...(daAltroAbbonamento ? { nota: notaDisdettaAltroAbbonamento() } : {}),
+    }).eq('id', id);
     await supabase.rpc('decrement_lezioni_usate', { sub_id: subId });
     load();
   };
