@@ -155,11 +155,13 @@ function ExceptionsPanel({ course, exceptions, onAdd, onDelete }: {
               </button>
             </div>
           ))}
-          <div className="flex gap-2">
-            <input type="date" value={newDate} onChange={e => setDate(e.target.value)} min={new Date().toISOString().split('T')[0]}
-              className="flex-1 bg-surface border border-outline-variant/40 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-primary" />
-            <input type="text" value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Motivo (opz.)"
-              className="flex-1 bg-surface border border-outline-variant/40 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-primary" />
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <input type="date" value={newDate} onChange={e => setDate(e.target.value)} min={new Date().toISOString().split('T')[0]}
+                className="w-full min-w-0 bg-surface border border-outline-variant/40 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-primary" />
+              <input type="text" value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Motivo (opz.)"
+                className="w-full min-w-0 bg-surface border border-outline-variant/40 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-primary" />
+            </div>
             <button
               onClick={async () => {
                 if (!newDate) return;
@@ -168,9 +170,9 @@ function ExceptionsPanel({ course, exceptions, onAdd, onDelete }: {
                 setDate(''); setMotivo(''); setSaving(false);
               }}
               disabled={!newDate || saving}
-              className="bg-red-500 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-red-600 transition-all disabled:opacity-50"
+              className="w-full bg-red-500 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-red-600 transition-all disabled:opacity-50"
             >
-              {saving ? '...' : 'Cancella'}
+              {saving ? '...' : 'Cancella data'}
             </button>
           </div>
         </div>
